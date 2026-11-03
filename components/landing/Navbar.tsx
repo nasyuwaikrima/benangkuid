@@ -26,22 +26,22 @@ export default function Navbar() {
 
   // Deteksi scroll untuk mengubah tampilan Navbar
   useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20);
-    };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  const handleScroll = () => setIsScrolled(window.scrollY > 20);
+  handleScroll(); // cek posisi awal
+  window.addEventListener("scroll", handleScroll, { passive: true });
+  return () => window.removeEventListener("scroll", handleScroll);
+}, []);
 
-  // Lock scroll saat menu mobile terbuka
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "unset";
-    }
-  }, [isOpen]);
-
+useEffect(() => {
+  document.body.style.overflow = isOpen ? "hidden" : "";
+  const onKey = (e: KeyboardEvent) => e.key === "Escape" && setIsOpen(false);
+  window.addEventListener("keydown", onKey);
+  return () => {
+    document.body.style.overflow = "";
+    window.removeEventListener("keydown", onKey);
+  };
+}, [isOpen]);
+  
   return (
     <header
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
