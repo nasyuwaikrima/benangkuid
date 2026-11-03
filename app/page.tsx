@@ -1,5 +1,6 @@
 import Navbar from "@/components/landing/Navbar";
 import Hero from "@/components/landing/Hero";
+import Calculator from "@/components/landing/Calculator";
 import Features from "@/components/landing/Features";
 
 export default function Home() {
@@ -9,6 +10,7 @@ export default function Home() {
       <div className="relative z-10">
         <Hero />
         <Features />
+        <Calculator />
       </div>
     </main>
   );
