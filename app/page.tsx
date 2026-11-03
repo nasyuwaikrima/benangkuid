@@ -1,5 +1,6 @@
 import Navbar from "@/components/landing/Navbar";
 import Hero from "@/components/landing/Hero";
+import Footer from "@/components/landing/Footer";
 import SocialProof from "@/components/landing/SocialProof";
 import Pricing from "@/components/landing/Pricing";
 import Calculator from "@/components/landing/Calculator";
@@ -15,6 +16,7 @@ export default function Home() {
         <Calculator />
         <Pricing />
         <SocialProof />
+        <Footer />
       </div>
     </main>
   );
