@@ -27,6 +27,16 @@ export async function proxy(request: NextRequest) {
     }
   );
 
+  const { data: { user }, error } = await supabase.auth.getUser();
+
+console.log('[proxy]', {
+  path: request.nextUrl.pathname,
+  host: request.headers.get('host'),
+  cookieNames: request.cookies.getAll().map((c) => c.name),
+  user: user?.id ?? 'NO USER',
+  error: error?.message ?? null,
+});
+
   // Refresh session
   await supabase.auth.getUser();
 
