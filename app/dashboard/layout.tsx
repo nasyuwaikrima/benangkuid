@@ -4,6 +4,9 @@ import { OnboardingModal } from '@/components/dashboard/onboarding-modal';
 import { PaywallBanner } from '@/components/dashboard/paywall-banner';
 import { logout } from '@/app/auth/actions';
 
+// Beritahu Next.js 16 PPR/Cache Components bahwa route ini butuh cookie/auth (blocking dynamic)
+export const instant = false;
+
 export default async function DashboardLayout({
   children,
 }: {

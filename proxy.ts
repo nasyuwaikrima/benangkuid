@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let response = NextResponse.next({
     request: { headers: request.headers },
   });
@@ -27,7 +27,7 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  // Refresh auth session (tanpa query DB)
+  // Refresh session
   await supabase.auth.getUser();
 
   return response;
