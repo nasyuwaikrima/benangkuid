@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowLeft, FileText, ShieldAlert, Scissors, Mail } from "lucide-react";
-import { TERMS_AND_CONDITIONS } from "@/lib/constants/terms";
+import { TERMS_AND_CONDITIONS } from "@/config/terms";
 
 export const metadata = {
   title: "Syarat & Ketentuan Layanan - benangku.id",
