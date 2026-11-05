@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { logout } from '@/app/auth/actions';
 import Link from 'next/link';
-import { PRICING_PLANS } from '@/config/pricing'; // Sesuaikan jika lokasi file di @/constants/pricing
+import { PRICING_PLANS, formatRupiah } from '@/config/pricing';
 import { 
   Store, 
   User, 
@@ -55,20 +55,12 @@ export default async function ProfilePage() {
   const shopName = shop?.shop_name || 'Toko Saya';
   const subStatus = shop?.subscription_status || 'trialing';
 
-  // 4. Sinkronisasi dengan Modular Pricing Plans
-  const proPlan = PRICING_PLANS.find((p) => p.id === 'penjahit-lokal');
-  const trialPlan = PRICING_PLANS.find((p) => p.id === 'trial-14-hari');
+  // 4. Sinkronisasi dengan Modular Pricing Plans (ID 'pro' & 'trial')
+  const proPlan = PRICING_PLANS.find((p) => p.id === 'pro');
+  const trialPlan = PRICING_PLANS.find((p) => p.id === 'trial');
   
   // Ambil data plan aktif sesuai status DB
   const currentPlan = subStatus === 'active' ? proPlan : trialPlan;
-
-  // URL WhatsApp untuk upgrade/perpanjang
-  const waMessage = encodeURIComponent(
-    `Halo Admin benangku.id, saya ingin ${
-      isExpired ? 'mengaktifkan kembali' : subStatus === 'trialing' ? 'upgrade ke' : 'perpanjang'
-    } Paket ${proPlan?.name || 'Penjahit Lokal'} (${user.email})`
-  );
-  const waUpgradeUrl = `https://wa.me/6281234567890?text=${waMessage}`;
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-12 select-none">
@@ -237,7 +229,7 @@ export default async function ProfilePage() {
             {isExpired
               ? 'Expired'
               : currentPlan
-              ? `${currentPlan.price} ${currentPlan.period}`
+              ? `${formatRupiah(currentPlan.priceAmount)} ${currentPlan.period}`
               : 'Rp 0 / 14 hari'}
           </span>
         </div>
@@ -260,19 +252,16 @@ export default async function ProfilePage() {
                 {isExpired ? 'Masa Aktif Habis' : subStatus === 'trialing' ? 'Upgrade ke Pro' : 'Perpanjang Masa Aktif'}
               </span>
               <span className="text-xs font-semibold text-slate-200">
-                {subStatus === 'trialing' ? 'Akses Tanpa Batas' : 'Hubungi Support WA'}
+                {subStatus === 'trialing' ? 'Akses Tanpa Batas' : 'Pilih Pembayaran QRIS'}
               </span>
             </div>
             
-            <a
-              href={waUpgradeUrl}
-              target="_blank"
-              rel="noreferrer"
+            <Link
+              href="/dashboard/upgrade"
               className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow-md shadow-blue-600/20 transition shrink-0"
             >
               <span>{isExpired ? 'Aktifkan Lagi' : subStatus === 'trialing' ? 'Upgrade Pro' : 'Perpanjang'}</span>
-              <ExternalLink className="w-3.5 h-3.5" />
-            </a>
+            </Link>
           </div>
         </div>
       </div>
