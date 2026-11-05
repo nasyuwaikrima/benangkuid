@@ -1,7 +1,10 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
+import { AlertTriangle, Users, Clock, ArrowRight } from 'lucide-react';
 import { AccessGuard } from '@/lib/subscription';
+import { PLAN_LIMITS } from '@/config/pricing';
 
 interface PaywallBannerProps {
   access?: AccessGuard;
@@ -17,37 +20,68 @@ export function PaywallBanner({ access, onUpgradeClick }: PaywallBannerProps) {
     return null;
   }
 
-  const handleUpgrade = () => {
-    if (onUpgradeClick) {
-      onUpgradeClick();
-    } else {
-      const text = encodeURIComponent('Halo Admin benangku.id, saya ingin upgrade sewa toko ke Paket Pro.');
-      window.open(`https://wa.me/6281234567890?text=${text}`, '_blank');
-    }
-  };
+  const isExpired = access.isExpired;
+  const isCustomerLimit = access.blockReason === 'CUSTOMER_LIMIT';
 
   return (
-    <div className={`p-4 mb-6 rounded-lg flex flex-col sm:flex-row justify-between items-center gap-3 ${
-      access.isExpired
-        ? 'bg-red-500/10 border border-red-500/30 text-red-700 dark:text-red-300'
-        : 'bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-300'
-    }`}>
-      <div className="text-sm">
-        {access.isExpired ? (
-          <p className="font-semibold">⚠️ Masa berlangganan telah berakhir. Fitur penambahan data baru dinonaktifkan.</p>
-        ) : access.blockReason === 'CUSTOMER_LIMIT' ? (
-          <p className="font-semibold">📌 Batas maksimal 10 pelanggan trial telah tercapai.</p>
-        ) : (
-          <p className="font-semibold">⏳ Masa trial menyisakan {access.daysRemaining} hari lagi.</p>
-        )}
+    <div
+      className={`p-4 mb-6 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border transition-all ${
+        isExpired
+          ? 'bg-red-950/30 border-red-500/30 text-red-200'
+          : 'bg-amber-950/30 border-amber-500/30 text-amber-200'
+      }`}
+    >
+      <div className="flex items-center gap-3">
+        <div
+          className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border ${
+            isExpired
+              ? 'bg-red-500/10 border-red-500/20 text-red-400'
+              : 'bg-amber-500/10 border-amber-500/20 text-amber-400'
+          }`}
+        >
+          {isExpired ? (
+            <AlertTriangle className="w-5 h-5" />
+          ) : isCustomerLimit ? (
+            <Users className="w-5 h-5" />
+          ) : (
+            <Clock className="w-5 h-5" />
+          )}
+        </div>
+
+        <div className="text-xs sm:text-sm">
+          {isExpired ? (
+            <p className="font-semibold text-red-300">
+              Masa berlangganan telah berakhir. Fitur penambahan data baru dinonaktifkan.
+            </p>
+          ) : isCustomerLimit ? (
+            <p className="font-semibold text-amber-300">
+              Batas maksimal {PLAN_LIMITS.trial.maxCustomers} pelanggan trial telah tercapai.
+            </p>
+          ) : (
+            <p className="font-semibold text-amber-300">
+              Masa trial menyisakan {access.daysRemaining} hari lagi.
+            </p>
+          )}
+        </div>
       </div>
 
-      <button
-        onClick={handleUpgrade}
-        className="px-4 py-2 text-xs font-semibold rounded-md bg-blue-600 hover:bg-blue-700 text-white transition-colors whitespace-nowrap"
-      >
-        Hubungi Admin WA (Upgrade Pro)
-      </button>
+      {onUpgradeClick ? (
+        <button
+          onClick={onUpgradeClick}
+          className="w-full sm:w-auto px-4 py-2.5 text-xs font-semibold rounded-xl bg-blue-600 hover:bg-blue-500 text-white shadow-md shadow-blue-600/20 transition-all flex items-center justify-center gap-2 whitespace-nowrap shrink-0"
+        >
+          <span>Upgrade Pro</span>
+          <ArrowRight className="w-3.5 h-3.5" />
+        </button>
+      ) : (
+        <Link
+          href="/dashboard/upgrade"
+          className="w-full sm:w-auto px-4 py-2.5 text-xs font-semibold rounded-xl bg-blue-600 hover:bg-blue-500 text-white shadow-md shadow-blue-600/20 transition-all flex items-center justify-center gap-2 whitespace-nowrap shrink-0"
+        >
+          <span>Upgrade Pro</span>
+          <ArrowRight className="w-3.5 h-3.5" />
+        </Link>
+      )}
     </div>
   );
 }
