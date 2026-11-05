@@ -12,14 +12,15 @@ import {
   Phone, 
   Calendar, 
   AlertCircle, 
-  ExternalLink,
   Ban,
   Check,
   Flame,
   AlertTriangle,
   Coins,
   MessageSquare,
-  Sparkles
+  Sparkles,
+  PackageCheck,
+  Undo2
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -71,7 +72,7 @@ export default function OrderQueue({
     if (st) setActiveTab(st);
   }, [searchParams]);
 
-  // Fungsi mengubah URL query param tanpa reload halaman
+  // Fungsi mengupdate query params URL tanpa reload
   const updateQueryParam = (newStatus: string, newOption: string) => {
     const params = new URLSearchParams(searchParams.toString());
     
@@ -97,25 +98,29 @@ export default function OrderQueue({
 
   const handleOptionChange = (optionId: string) => {
     setActiveOption(optionId);
-    // Jika memilih filter 'mepet' atau 'terlambat', otomatis ubah tab status ke 'semua' agar pesanan terlihat
     const targetStatus = optionId === "mepet" || optionId === "terlambat" ? "semua" : activeTab;
     if (targetStatus !== activeTab) setActiveTab(targetStatus);
     updateQueryParam(targetStatus, optionId);
   };
 
-  // Update Status Pesanan di Supabase Real-time
-  const handleUpdateStatus = async (orderId: string, newStatus: string) => {
+  // Update Status Pesanan & Pelunasan di Supabase Real-time
+  const handleUpdateStatus = async (
+    orderId: string, 
+    newStatus: string, 
+    additionalFields?: Partial<OrderItem>
+  ) => {
     setUpdatingId(orderId);
     try {
+      const payload = { status_pengerjaan: newStatus, ...additionalFields };
       const { error } = await supabase
         .from("orders")
-        .update({ status_pengerjaan: newStatus })
+        .update(payload)
         .eq("id", orderId);
 
       if (error) throw error;
 
       setOrders((prev) =>
-        prev.map((o) => (o.id === orderId ? { ...o, status_pengerjaan: newStatus } : o))
+        prev.map((o) => (o.id === orderId ? { ...o, ...payload } : o))
       );
       router.refresh();
     } catch (err: any) {
@@ -223,7 +228,7 @@ export default function OrderQueue({
         </div>
       </div>
 
-      {/* SUB-FILTER QUICK OPTION CHIPS (URL QUERY PARAM OPTION) */}
+      {/* SUB-FILTER QUICK OPTION CHIPS */}
       <div className="flex items-center gap-2 flex-wrap border-b border-slate-800/80 pb-3">
         <span className="text-xs font-semibold text-slate-400 mr-1 flex items-center gap-1">
           <Sparkles className="w-3.5 h-3.5 text-blue-400" /> Filter Cepat:
@@ -280,7 +285,7 @@ export default function OrderQueue({
         {[
           { id: "antrean", label: "Belum Dijahit", icon: Clock },
           { id: "proses", label: "Sedang Dijahit", icon: Scissors },
-          { id: "selesai", label: "Siap Ambil", icon: CheckCircle2 },
+          { id: "selesai", label: "Selesai / Siap Ambil", icon: CheckCircle2 },
           { id: "batal", label: "Retur / Batal", icon: Ban },
           { id: "semua", label: "Semua Status", icon: Search },
         ].map((tab) => {
@@ -323,7 +328,6 @@ export default function OrderQueue({
             const deadlineInfo = getDeadlineStatus(order.tgl_deadline, order.status_pengerjaan);
             const isUrgent = deadlineInfo?.type === "mepet" || deadlineInfo?.type === "today" || deadlineInfo?.type === "overdue";
 
-            // Template pesan WhatsApp untuk penjahit
             const waMessage = encodeURIComponent(
               `Halo kak ${order.customers?.name || ''}, mengenai pesanan jahit ${order.item_name} di toko kami.`
             );
@@ -331,7 +335,7 @@ export default function OrderQueue({
             return (
               <div
                 key={order.id}
-                className={`bg-[#161F30] border rounded-2xl p-5 space-y-4 shadow-lg flex flex-col justify-between transition relative overflow-hidden ${
+                className={`bg-[#161F30] border rounded-2xl p-6 space-y-4 shadow-lg flex flex-col justify-between transition relative overflow-hidden ${
                   isUrgent
                     ? "border-amber-500/60 ring-1 ring-amber-500/20"
                     : "border-slate-800/90 hover:border-slate-700/80"
@@ -394,7 +398,7 @@ export default function OrderQueue({
                         : order.status_pengerjaan === "proses"
                         ? "Sedang Dijahit"
                         : order.status_pengerjaan === "selesai"
-                        ? "Siap Ambil"
+                        ? "Selesai"
                         : "Batal / Retur"}
                     </span>
                   </div>
@@ -450,17 +454,18 @@ export default function OrderQueue({
                   </div>
                 </div>
 
-                {/* ACTION BUTTON GROUP */}
-                <div className="pt-3 border-t border-slate-800/80 flex items-center gap-2">
+                {/* ACTION BUTTON GROUP (ALUR LOGIKA PENJAHIT) */}
+                <div className="pt-3 border-t border-slate-800/80 space-y-2">
+                  {/* STEP 1: BELUM DIJAHIT (ANTREAN) */}
                   {order.status_pengerjaan === "antrean" && (
-                    <>
+                    <div className="flex items-center gap-2">
                       <button
                         onClick={() => handleUpdateStatus(order.id, "proses")}
                         disabled={isUpdating}
                         className="flex-1 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 shadow-md shadow-blue-600/20 transition disabled:opacity-50"
                       >
                         <Play className="w-3.5 h-3.5 fill-current" />
-                        <span>{isUpdating ? "Memproses..." : "Jahit Sekarang"}</span>
+                        <span>{isUpdating ? "Memproses..." : "Mulai Dijahit"}</span>
                       </button>
 
                       <button
@@ -471,35 +476,70 @@ export default function OrderQueue({
                         <RotateCcw className="w-3.5 h-3.5" />
                         <span>Retur / Batal</span>
                       </button>
-                    </>
+                    </div>
                   )}
 
+                  {/* STEP 2: SEDANG DIJAHIT (PROSES) */}
                   {order.status_pengerjaan === "proses" && (
-                    <button
-                      onClick={() => handleUpdateStatus(order.id, "selesai")}
-                      disabled={isUpdating}
-                      className="w-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/20 transition disabled:opacity-50"
-                    >
-                      <CheckCircle2 className="w-4 h-4" />
-                      <span>{isUpdating ? "Memproses..." : "Selesai Jahit (Siap Ambil)"}</span>
-                    </button>
-                  )}
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleUpdateStatus(order.id, "selesai")}
+                        disabled={isUpdating}
+                        className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 shadow-md shadow-emerald-600/20 transition disabled:opacity-50"
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>{isUpdating ? "Memproses..." : "Selesai Dijahit (Siap Ambil)"}</span>
+                      </button>
 
-                  {order.status_pengerjaan === "selesai" && (
-                    <div className="w-full flex items-center justify-between bg-emerald-500/10 border border-emerald-500/20 p-2.5 rounded-xl text-emerald-400 text-xs font-semibold">
-                      <span className="flex items-center gap-1.5">
-                        <Check className="w-4 h-4" /> Siap diserahkan ke pelanggan
-                      </span>
                       <button
                         onClick={() => handleUpdateStatus(order.id, "antrean")}
                         disabled={isUpdating}
-                        className="text-[11px] text-slate-400 hover:text-white underline"
+                        className="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold py-2.5 px-3 rounded-xl flex items-center justify-center gap-1 transition"
+                        title="Kembalikan ke antrean"
                       >
-                        Kembalikan
+                        <Undo2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   )}
 
+                  {/* STEP 3: SELESAI / SIAP AMBIL / SUDAH DIAMBIL */}
+                  {order.status_pengerjaan === "selesai" && (
+                    <div className="space-y-2">
+                      <button
+                        onClick={() =>
+                          handleUpdateStatus(order.id, "selesai", {
+                            dp_dibayar: order.total_biaya,
+                          })
+                        }
+                        disabled={isUpdating || isLunas}
+                        className={`w-full text-xs font-bold py-2.5 px-3 rounded-xl flex items-center justify-center gap-2 transition disabled:opacity-80 ${
+                          isLunas
+                            ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 cursor-default"
+                            : "bg-blue-600 hover:bg-blue-500 text-white shadow-md shadow-blue-600/20"
+                        }`}
+                      >
+                        <PackageCheck className="w-4 h-4" />
+                        <span>
+                          {isLunas
+                            ? "Pesanan Selesai & Sudah Diambil"
+                            : `Serahkan & Lunasi Sisa Rp ${sisaBayar.toLocaleString("id-ID")}`}
+                        </span>
+                      </button>
+
+                      <div className="flex justify-end">
+                        <button
+                          onClick={() => handleUpdateStatus(order.id, "proses")}
+                          disabled={isUpdating}
+                          className="text-[11px] text-slate-400 hover:text-amber-400 underline flex items-center gap-1"
+                        >
+                          <Undo2 className="w-3 h-3" />
+                          <span>Revisi / Jahit Ulang</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* STEP 4: BATAL / RETUR */}
                   {order.status_pengerjaan === "batal" && (
                     <button
                       onClick={() => handleUpdateStatus(order.id, "antrean")}
