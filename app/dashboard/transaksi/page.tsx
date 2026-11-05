@@ -1,13 +1,20 @@
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
+import { connection } from 'next/server'; // <-- 1. IMPORT CONNECTION
 import Link from 'next/link';
-import PaymentStatusChecker from '@/components/PaymentStatusChecker'; // Import komponen polling client
+import PaymentStatusChecker from '@/components/PaymentStatusChecker';
+
+// 2. Tandai rute transaksi sebagai blocking route saat navigasi (mencegah prerender statis)
+export const instant = false;
 
 interface PageProps {
   searchParams: Promise<{ id?: string }>;
 }
 
 export default async function TransaksiPage({ searchParams }: PageProps) {
+  // 3. Beritahu Next.js 16 bahwa halaman ini dinamis saat request time
+  await connection();
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -86,7 +93,6 @@ export default async function TransaksiPage({ searchParams }: PageProps) {
 
     return (
       <div className="p-6 max-w-lg mx-auto">
-        {/* Komponen Client untuk Auto-Poll / Cek Status Otomatis */}
         <PaymentStatusChecker invoiceId={transaction.invoice_id} status={transaction.status} />
 
         <Link

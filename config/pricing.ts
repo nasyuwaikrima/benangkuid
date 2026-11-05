@@ -16,7 +16,10 @@ export interface PricingPlan {
   ctaText: string;
 }
 
-export const formatRupiah = (n: number) => `Rp ${n.toLocaleString('id-ID')}`;
+export const formatRupiah = (n?: number | null) => {
+  if (typeof n !== 'number' || isNaN(n)) return 'Rp 0';
+  return `Rp ${n.toLocaleString('id-ID')}`;
+};
 
 export const PRICING_PLANS: PricingPlan[] = [
   {

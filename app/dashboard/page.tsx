@@ -1,8 +1,14 @@
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
+import { connection } from 'next/server';
 import DashboardOverview from '@/components/dashboard/dashboard-overview';
 
+// Beritahu Next.js 16 PPR bahwa halaman ini adalah blocking route saat navigasi
+export const instant = false;
+
 export default async function DashboardPage() {
+  await connection();
+
   const supabase = await createClient();
 
   // 1. Auth Check

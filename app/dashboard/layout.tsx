@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
+import { connection } from 'next/server';
 import { OnboardingModal } from '@/components/dashboard/onboarding-modal';
 import { PaywallBanner } from '@/components/dashboard/paywall-banner';
 import Sidebar from "@/components/dashboard/Sidebar";
@@ -7,7 +8,6 @@ import Topbar from "@/components/dashboard/Topbar";
 import BottomNav from "@/components/dashboard/BottomNav";
 import { checkShopAccess } from '@/lib/subscription';
 
-// Beritahu Next.js 16 PPR/Cache components/dashboard bahwa route ini butuh cookie/auth (blocking dynamic)
 export const instant = false;
 
 export default async function DashboardLayout({
@@ -15,6 +15,8 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
+  await connection();
+
   const supabase = await createClient();
 
   // 1. Cek User Auth Session
@@ -24,7 +26,7 @@ export default async function DashboardLayout({
     redirect('/login');
   }
 
-  // 2. Query Data Toko & Jumlah Pelanggan Saat Ini (Paralel via Promise.all)
+  // 2. Query Data Toko & Jumlah Pelanggan Saat Ini
   const [{ data: shop }, { count: customerCount }] = await Promise.all([
     supabase
       .from('shops')
@@ -51,18 +53,12 @@ export default async function DashboardLayout({
 
   return (
     <div className="flex min-h-screen bg-[#0B0F17] text-slate-100 font-sans antialiased">
-      {/* Sidebar Desktop */}
       <Sidebar />
-
-      {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 pb-20 md:pb-0"> 
-        {/* Header Topbar Desktop */}
         <Topbar 
           ownerName={shop?.owner_name || user.user_metadata?.full_name || 'Penjahit'} 
           shopName={shop?.shop_name || 'Toko Saya'} 
         />
-
-        {/* Dynamic Page Content */}
         <main className="flex-1 p-4 md:p-6 overflow-y-auto">
           <PaywallBanner access={access} />
           <div className={access?.isExpired ? 'pointer-events-none opacity-50 select-none' : ''}>
@@ -70,8 +66,6 @@ export default async function DashboardLayout({
           </div>
         </main>
       </div>
-
-      {/* Floating Bottom Nav Mobile */}
       <BottomNav />
     </div>
   );

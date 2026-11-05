@@ -13,9 +13,9 @@ export interface AccessGuard {
 export function checkShopAccess(
   shop: Shop,
   currentCustomerCount: number = 0,
-  currentOrderCount: number = 0
+  currentOrderCount: number = 0,
+  now: Date = new Date() // Menerima parameter now agar teratur
 ): AccessGuard {
-  const now = new Date();
   const trialEnd = new Date(shop.trial_ends_at);
   const proEnd = shop.pro_valid_until ? new Date(shop.pro_valid_until) : null;
 
