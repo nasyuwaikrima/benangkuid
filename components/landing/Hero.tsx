@@ -35,7 +35,7 @@ export default function Hero() {
         <div className="text-center md:text-left">
           <div className="fade-up inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-900/90 border border-slate-800 text-[15px] font-medium mb-5 backdrop-blur-md">
             <span className="flex h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
-            <span className="text-slate-300">Aplikasi untuk Penjahit & Konveksi</span>
+            <span className="text-slate-300">Aplikasi catatan order Penjahit & Konveksi</span>
           </div>
 
           <h1
@@ -80,7 +80,7 @@ export default function Hero() {
               className="w-full sm:w-auto px-6 py-3 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold text-base shadow-lg shadow-blue-600/25 active:scale-95 transition-all flex items-center justify-center gap-2 group"
             >
               <MessageSquare className="w-[18px] h-[18px]" />
-              <span>Coba Gratis Sekarang</span>
+              <span>Coba Gratis 14 hari Sekarang</span>
               <ArrowRight className="w-[18px] h-[18px] group-hover:translate-x-1 transition-transform" />
             </Link>
             <a
