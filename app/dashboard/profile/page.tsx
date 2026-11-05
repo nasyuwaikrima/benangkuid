@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { logout } from '@/app/auth/actions';
 import Link from 'next/link';
+import { PRICING_PLANS } from '@/config/pricing'; // Sesuaikan jika lokasi file di @/constants/pricing
 import { 
   Store, 
   User, 
@@ -12,7 +13,6 @@ import {
   Calendar, 
   LogOut, 
   CheckCircle2, 
-  AlertTriangle,
   ExternalLink,
   Edit3
 } from 'lucide-react';
@@ -26,14 +26,14 @@ export default async function ProfilePage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  // 2. Query Data Toko
+  // 2. Query Data Toko dari DB (Sesuai Schema Table `shops`)
   const { data: shop } = await supabase
     .from('shops')
     .select('shop_name, owner_name, whatsapp_number, is_onboarded, subscription_status, trial_ends_at, pro_valid_until')
     .eq('id', user.id)
     .maybeSingle();
 
-  // Hitung Status Expired & Format Tanggal
+  // 3. Hitung Status Expired & Format Tanggal
   const now = new Date();
   const trialEnds = shop?.trial_ends_at ? new Date(shop.trial_ends_at) : null;
   const proValid = shop?.pro_valid_until ? new Date(shop.pro_valid_until) : null;
@@ -55,17 +55,30 @@ export default async function ProfilePage() {
   const shopName = shop?.shop_name || 'Toko Saya';
   const subStatus = shop?.subscription_status || 'trialing';
 
+  // 4. Sinkronisasi dengan Modular Pricing Plans
+  const proPlan = PRICING_PLANS.find((p) => p.id === 'penjahit-lokal');
+  const trialPlan = PRICING_PLANS.find((p) => p.id === 'trial-14-hari');
+  
+  // Ambil data plan aktif sesuai status DB
+  const currentPlan = subStatus === 'active' ? proPlan : trialPlan;
+
+  // URL WhatsApp untuk upgrade/perpanjang
+  const waMessage = encodeURIComponent(
+    `Halo Admin benangku.id, saya ingin ${
+      isExpired ? 'mengaktifkan kembali' : subStatus === 'trialing' ? 'upgrade ke' : 'perpanjang'
+    } Paket ${proPlan?.name || 'Penjahit Lokal'} (${user.email})`
+  );
+  const waUpgradeUrl = `https://wa.me/6281234567890?text=${waMessage}`;
+
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-12 select-none">
       
       {/* HEADER BANNER PROFIL */}
       <div className="bg-[#161F30] border border-slate-800 rounded-3xl p-6 relative overflow-hidden shadow-xl">
-        {/* Glow accent */}
         <div className="absolute -top-12 -right-12 w-40 h-40 bg-blue-600/15 rounded-full blur-3xl pointer-events-none" />
         
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
           <div className="flex items-center gap-4">
-            {/* Avatar Inisial Toko */}
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-700 text-white font-bold text-2xl flex items-center justify-center shadow-lg shadow-blue-600/30 border border-blue-400/20 shrink-0">
               {ownerName.substring(0, 2).toUpperCase()}
             </div>
@@ -76,7 +89,7 @@ export default async function ProfilePage() {
                   {shopName}
                 </h1>
                 
-                {/* Badge Status Langganan */}
+                {/* Badge Status Langganan Utama */}
                 <span className={`inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider border ${
                   isExpired
                     ? 'bg-red-500/10 text-red-400 border-red-500/20'
@@ -87,7 +100,11 @@ export default async function ProfilePage() {
                   <span className={`w-2 h-2 rounded-full ${
                     isExpired ? 'bg-red-400' : subStatus === 'active' ? 'bg-emerald-400' : 'bg-blue-400'
                   }`} />
-                  {isExpired ? 'EXPIRED' : subStatus === 'active' ? 'PAKET PRO' : 'MASA TRIAL'}
+                  {isExpired 
+                    ? 'EXPIRED' 
+                    : subStatus === 'active' 
+                    ? `PAKET ${proPlan?.name.toUpperCase()}` 
+                    : 'MASA TRIAL (14 HARI)'}
                 </span>
               </div>
               
@@ -98,7 +115,6 @@ export default async function ProfilePage() {
             </div>
           </div>
 
-          {/* Tombol Edit Profil */}
           <Link
             href="/dashboard/pengaturan"
             className="self-start md:self-center bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700/80 text-xs font-semibold px-4 py-2.5 rounded-xl flex items-center gap-2 transition"
@@ -113,7 +129,7 @@ export default async function ProfilePage() {
       {/* GRID CARDS PROFIL */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-        {/* CARD 1: IDENTITAS TOKO / PENJAHIT */}
+        {/* CARD 1: IDENTITAS TOKO */}
         <div className="bg-[#161F30] border border-slate-800 rounded-2xl p-5 md:p-6 space-y-4 shadow-lg">
           <div className="flex items-center gap-3 border-b border-slate-800/80 pb-3.5">
             <div className="w-9 h-9 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
@@ -160,7 +176,7 @@ export default async function ProfilePage() {
         </div>
 
 
-        {/* CARD 2: INFORMASI AKUN & STATUS */}
+        {/* CARD 2: INFORMASI AKUN */}
         <div className="bg-[#161F30] border border-slate-800 rounded-2xl p-5 md:p-6 space-y-4 shadow-lg">
           <div className="flex items-center gap-3 border-b border-slate-800/80 pb-3.5">
             <div className="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
@@ -196,6 +212,7 @@ export default async function ProfilePage() {
 
       {/* CARD 3: MANAJEMEN LANGGANAN (BILLING / SUBSCRIPTION) */}
       <div className="bg-[#161F30] border border-slate-800 rounded-2xl p-5 md:p-6 space-y-4 shadow-lg">
+        {/* Header Billing */}
         <div className="flex items-center justify-between border-b border-slate-800/80 pb-3.5">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
@@ -203,38 +220,57 @@ export default async function ProfilePage() {
             </div>
             <div>
               <h2 className="text-sm font-bold text-white">Status Langganan Aplikasi</h2>
-              <p className="text-[11px] text-slate-400">Masa aktif & lisensi Mitra Penjahit UMKM</p>
+              <p className="text-[11px] text-slate-400">
+                {currentPlan?.name || 'Uji Coba'} — Paket {subStatus === 'active' ? 'Berlangganan' : 'Uji Coba'}
+              </p>
             </div>
           </div>
 
-          <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full">
-            Rp 20.000 / bln
+          {/* Tag Harga Dinamis ngikutin currentPlan */}
+          <span className={`text-xs font-bold px-3 py-1 rounded-full border ${
+            isExpired
+              ? 'text-red-400 bg-red-500/10 border-red-500/20'
+              : subStatus === 'active' 
+              ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' 
+              : 'text-blue-400 bg-blue-500/10 border-blue-500/20'
+          }`}>
+            {isExpired
+              ? 'Expired'
+              : currentPlan
+              ? `${currentPlan.price} ${currentPlan.period}`
+              : 'Rp 0 / 14 hari'}
           </span>
         </div>
 
+        {/* Content Details Billing */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="bg-[#0F172A] border border-slate-800 rounded-xl p-4 space-y-1">
             <span className="text-[11px] text-slate-400 flex items-center gap-1.5 font-medium">
               <Calendar className="w-3.5 h-3.5 text-slate-500" />
               {subStatus === 'active' ? 'Masa Aktif Paket Pro' : 'Masa Berlaku Trial'}
             </span>
-            <p className="text-sm font-bold text-white">
+            <p className={`text-sm font-bold ${isExpired ? 'text-red-400' : 'text-white'}`}>
               {subStatus === 'active' ? formatDate(proValid) : formatDate(trialEnds)}
             </p>
           </div>
 
-          <div className="bg-[#0F172A] border border-slate-800 rounded-xl p-4 flex items-center justify-between">
+          <div className="bg-[#0F172A] border border-slate-800 rounded-xl p-4 flex items-center justify-between gap-3">
             <div>
-              <span className="text-[11px] text-slate-400 font-medium block">Kebutuhan Bantuan / Perpanjang</span>
-              <span className="text-xs font-semibold text-slate-200">Hubungi Support WA</span>
+              <span className="text-[11px] text-slate-400 font-medium block">
+                {isExpired ? 'Masa Aktif Habis' : subStatus === 'trialing' ? 'Upgrade ke Pro' : 'Perpanjang Masa Aktif'}
+              </span>
+              <span className="text-xs font-semibold text-slate-200">
+                {subStatus === 'trialing' ? 'Akses Tanpa Batas' : 'Hubungi Support WA'}
+              </span>
             </div>
+            
             <a
-              href="https://wa.me/628XXXXXXXXX?text=Halo%20Admin%20benangku.id,%20saya%20ingin%20perpanjang%20paket%20langganan"
+              href={waUpgradeUrl}
               target="_blank"
               rel="noreferrer"
               className="bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow-md shadow-blue-600/20 transition shrink-0"
             >
-              <span>Perpanjang</span>
+              <span>{isExpired ? 'Aktifkan Lagi' : subStatus === 'trialing' ? 'Upgrade Pro' : 'Perpanjang'}</span>
               <ExternalLink className="w-3.5 h-3.5" />
             </a>
           </div>
