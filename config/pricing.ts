@@ -50,3 +50,16 @@ export const PRICING_PLANS: PricingPlan[] = [
     ctaHref: "/dashboard?plan=pro",
   },
 ];
+
+export const PLAN_LIMITS = {
+  trial: {
+    maxCustomers: 10,
+    maxOrders: 20,
+    trialDays: 14,
+  },
+  pro: {
+    maxCustomers: Infinity,
+    maxOrders: Infinity,
+    priceMonthly: 20000,
+  },
+} as const;
