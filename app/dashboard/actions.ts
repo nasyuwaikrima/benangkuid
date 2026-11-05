@@ -3,8 +3,10 @@
 import { createClient } from '@/lib/supabase/server';
 import { onboardingSchema } from '@/lib/validations/shop';
 import { checkRateLimit } from '@/lib/rate-limit';
+import { checkShopAccess } from '@/lib/subscription';
 import { revalidatePath } from 'next/cache';
 
+// 1. Action Onboarding Toko (Rate Limit + Zod Validation)
 export async function submitOnboarding(formData: FormData) {
   const supabase = await createClient();
 
@@ -13,13 +15,13 @@ export async function submitOnboarding(formData: FormData) {
     return { success: false, error: 'Sesi tidak valid, silakan login kembali.' };
   }
 
-  // 1. Rate Limiting Check (Maksimal 5x submit per menit per user)
+  // Rate Limiting Check (Maksimal 5x submit per menit per user)
   const isAllowed = checkRateLimit(`onboarding:${user.id}`, 5, 60 * 1000);
   if (!isAllowed) {
     return { success: false, error: 'Terlalu banyak percobaan. Coba lagi dalam 1 menit.' };
   }
 
-  // 2. Schema Validation via Zod
+  // Schema Validation via Zod
   const rawData = {
     shop_name: formData.get('shop_name'),
     whatsapp_number: formData.get('whatsapp_number'),
@@ -31,7 +33,7 @@ export async function submitOnboarding(formData: FormData) {
     return { success: false, error: errorMessage };
   }
 
-  // 3. Update Database
+  // Update Database
   const { error } = await supabase
     .from('shops')
     .update({
@@ -47,4 +49,56 @@ export async function submitOnboarding(formData: FormData) {
 
   revalidatePath('/dashboard');
   return { success: true };
+}
+
+// 2. Action Tambah Pelanggan (Subscription Guard + Limit Check)
+export async function createCustomerAction(formData: FormData) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { success: false, error: 'Sesi telah berakhir. Silakan login kembali.' };
+  }
+
+  const [{ data: shop }, { count: customerCount }] = await Promise.all([
+    supabase.from('shops').select('*').eq('id', user.id).single(),
+    supabase.from('customers').select('*', { count: 'exact', head: true }).eq('shop_id', user.id),
+  ]);
+
+  if (!shop) {
+    return { success: false, error: 'Profil toko tidak ditemukan.' };
+  }
+
+  const access = checkShopAccess(shop, customerCount || 0, 0);
+
+  if (!access.canCreateCustomer) {
+    return {
+      success: false,
+      isPaywallTriggered: true,
+      blockReason: access.blockReason,
+      error: access.isExpired
+        ? 'Masa trial/aktif paket telah habis. Silakan upgrade ke Pro.'
+        : `Batas ${customerCount} pelanggan trial telah tercapai. Upgrade ke Pro untuk akses tanpa batas!`,
+    };
+  }
+
+  const name = formData.get('name') as string;
+  const phone_number = formData.get('phone_number') as string;
+
+  if (!name || !phone_number) {
+    return { success: false, error: 'Nama dan nomor WhatsApp wajib diisi.' };
+  }
+
+  const { data, error } = await supabase
+    .from('customers')
+    .insert([{ shop_id: user.id, name, phone_number }])
+    .select()
+    .single();
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  revalidatePath('/dashboard');
+  return { success: true, data };
 }
