@@ -1,8 +1,15 @@
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
+import { connection } from 'next/server'; // <-- 1. IMPORT CONNECTION
 import OrderQueue from '@/components/dashboard/order-queue';
 
+// 2. Tandai rute ini sebagai blocking route untuk Next.js 16 PPR
+export const instant = false;
+
 export default async function AntreanPage() {
+  // 3. Wajib dipanggil di baris paling atas fungsi Server Component!
+  await connection();
+
   const supabase = await createClient();
 
   // 1. Auth Check
