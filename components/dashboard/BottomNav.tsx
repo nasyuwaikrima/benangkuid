@@ -9,7 +9,7 @@ const mobileItems = [
   { name: "Antrean", href: "/dashboard/antrean", icon: Scissors },
   { name: "Tambah", href: "/dashboard/tambah", icon: Plus, isAction: true },
   { name: "Riwayat", href: "/dashboard/riwayat", icon: History },
-  { name: "Profil", href: "/dashboard/profil", icon: User },
+  { name: "Profil", href: "/dashboard/profile", icon: User },
 ];
 
 
