@@ -1,14 +1,20 @@
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
-import { connection } from 'next/server'; // <-- 1. IMPORT CONNECTION
+import { connection } from 'next/server';
 import OrderQueue from '@/components/dashboard/order-queue';
 
-// 2. Tandai rute ini sebagai blocking route untuk Next.js 16 PPR
 export const instant = false;
 
-export default async function AntreanPage() {
-  // 3. Wajib dipanggil di baris paling atas fungsi Server Component!
+interface PageProps {
+  searchParams: Promise<{ option?: string; status?: string }>;
+}
+
+export default async function AntreanPage({ searchParams }: PageProps) {
   await connection();
+
+  const resolvedParams = await searchParams;
+  const initialOption = resolvedParams.option || 'semua';
+  const initialStatus = resolvedParams.status || 'antrean';
 
   const supabase = await createClient();
 
@@ -52,7 +58,11 @@ export default async function AntreanPage() {
 
   return (
     <div className="max-w-6xl mx-auto pb-16">
-      <OrderQueue initialOrders={orders} />
+      <OrderQueue
+        initialOrders={orders}
+        initialOption={initialOption}
+        initialStatus={initialStatus}
+      />
     </div>
   );
 }

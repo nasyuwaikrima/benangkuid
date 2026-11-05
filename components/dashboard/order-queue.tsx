@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { 
   Play, 
   RotateCcw, 
@@ -12,10 +12,14 @@ import {
   Phone, 
   Calendar, 
   AlertCircle, 
-  DollarSign, 
   ExternalLink,
   Ban,
-  Check
+  Check,
+  Flame,
+  AlertTriangle,
+  Coins,
+  MessageSquare,
+  Sparkles
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -37,13 +41,67 @@ interface OrderItem {
   } | null;
 }
 
-export default function OrderQueue({ initialOrders }: { initialOrders: OrderItem[] }) {
+interface OrderQueueProps {
+  initialOrders: OrderItem[];
+  initialOption?: string;
+  initialStatus?: string;
+}
+
+export default function OrderQueue({
+  initialOrders,
+  initialOption = "semua",
+  initialStatus = "antrean",
+}: OrderQueueProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const supabase = createClient();
+
   const [orders, setOrders] = useState<OrderItem[]>(initialOrders);
-  const [activeTab, setActiveTab] = useState<string>("antrean");
+  const [activeTab, setActiveTab] = useState<string>(initialStatus);
+  const [activeOption, setActiveOption] = useState<string>(initialOption);
   const [searchQuery, setSearchQuery] = useState("");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+
+  // Sync state lokal ketika parameter URL berubah
+  useEffect(() => {
+    const opt = searchParams.get("option");
+    const st = searchParams.get("status");
+    if (opt) setActiveOption(opt);
+    if (st) setActiveTab(st);
+  }, [searchParams]);
+
+  // Fungsi mengubah URL query param tanpa reload halaman
+  const updateQueryParam = (newStatus: string, newOption: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    
+    if (newStatus && newStatus !== "semua") {
+      params.set("status", newStatus);
+    } else {
+      params.delete("status");
+    }
+
+    if (newOption && newOption !== "semua") {
+      params.set("option", newOption);
+    } else {
+      params.delete("option");
+    }
+
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  };
+
+  const handleTabChange = (tabId: string) => {
+    setActiveTab(tabId);
+    updateQueryParam(tabId, activeOption);
+  };
+
+  const handleOptionChange = (optionId: string) => {
+    setActiveOption(optionId);
+    // Jika memilih filter 'mepet' atau 'terlambat', otomatis ubah tab status ke 'semua' agar pesanan terlihat
+    const targetStatus = optionId === "mepet" || optionId === "terlambat" ? "semua" : activeTab;
+    if (targetStatus !== activeTab) setActiveTab(targetStatus);
+    updateQueryParam(targetStatus, optionId);
+  };
 
   // Update Status Pesanan di Supabase Real-time
   const handleUpdateStatus = async (orderId: string, newStatus: string) => {
@@ -56,7 +114,6 @@ export default function OrderQueue({ initialOrders }: { initialOrders: OrderItem
 
       if (error) throw error;
 
-      // Update State Lokal Instant
       setOrders((prev) =>
         prev.map((o) => (o.id === orderId ? { ...o, status_pengerjaan: newStatus } : o))
       );
@@ -68,7 +125,31 @@ export default function OrderQueue({ initialOrders }: { initialOrders: OrderItem
     }
   };
 
-  // Filtering berdasarkan Status Tab & Search Bar
+  // Helper Kalkulasi Deadline & Urgensi
+  const getDeadlineStatus = (deadlineStr: string | null, status: string) => {
+    if (!deadlineStr || status === "selesai" || status === "batal") return null;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const deadline = new Date(deadlineStr);
+    deadline.setHours(0, 0, 0, 0);
+
+    const diffDays = Math.ceil((deadline.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 0) {
+      return { type: "overdue", label: `Terlambat ${Math.abs(diffDays)} Hari!`, days: diffDays };
+    }
+    if (diffDays === 0) {
+      return { type: "today", label: "DEADLINE HARI INI!", days: 0 };
+    }
+    if (diffDays <= 3) {
+      return { type: "mepet", label: `Mepet H-${diffDays}`, days: diffDays };
+    }
+    return { type: "normal", label: `H-${diffDays}`, days: diffDays };
+  };
+
+  // Filtering berdasarkan Tab Status, Option, dan Search Query
   const filteredOrders = orders.filter((order) => {
     const matchesTab = activeTab === "semua" || order.status_pengerjaan === activeTab;
     const customerName = order.customers?.name || "";
@@ -78,12 +159,36 @@ export default function OrderQueue({ initialOrders }: { initialOrders: OrderItem
       customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       phone.includes(searchQuery);
 
-    return matchesTab && matchesSearch;
+    const deadlineInfo = getDeadlineStatus(order.tgl_deadline, order.status_pengerjaan);
+    const sisaBayar = order.total_biaya - order.dp_dibayar;
+
+    let matchesOption = true;
+    if (activeOption === "mepet") {
+      matchesOption =
+        deadlineInfo?.type === "mepet" ||
+        deadlineInfo?.type === "today" ||
+        deadlineInfo?.type === "overdue";
+    } else if (activeOption === "terlambat") {
+      matchesOption = deadlineInfo?.type === "overdue";
+    } else if (activeOption === "belum_lunas") {
+      matchesOption = sisaBayar > 0 && order.status_pengerjaan !== "batal";
+    }
+
+    return matchesTab && matchesSearch && matchesOption;
   });
 
-  // Hitung jumlah tiap status untuk Badge Counter Tab
+  // Hitung Kuota Badge Counter
   const countStatus = (status: string) =>
     orders.filter((o) => status === "semua" || o.status_pengerjaan === status).length;
+
+  const countMepet = orders.filter((o) => {
+    const d = getDeadlineStatus(o.tgl_deadline, o.status_pengerjaan);
+    return d?.type === "mepet" || d?.type === "today" || d?.type === "overdue";
+  }).length;
+
+  const countBelumLunas = orders.filter(
+    (o) => o.total_biaya - o.dp_dibayar > 0 && o.status_pengerjaan !== "batal"
+  ).length;
 
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return "Tanpa Deadline";
@@ -97,11 +202,11 @@ export default function OrderQueue({ initialOrders }: { initialOrders: OrderItem
       {/* HEADER */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight">
-            Antrean & Status Jahit
+          <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight flex items-center gap-2">
+            <span>Antrean & Status Jahit</span>
           </h1>
           <p className="text-xs md:text-sm text-slate-400 mt-0.5">
-            Kelola tahapan pengerjaan jahit dan kontrol aksi status pesanan.
+            Kelola tahapan pengerjaan jahit, pantau deadline mepet, dan perbarui status pesanan.
           </p>
         </div>
 
@@ -118,6 +223,58 @@ export default function OrderQueue({ initialOrders }: { initialOrders: OrderItem
         </div>
       </div>
 
+      {/* SUB-FILTER QUICK OPTION CHIPS (URL QUERY PARAM OPTION) */}
+      <div className="flex items-center gap-2 flex-wrap border-b border-slate-800/80 pb-3">
+        <span className="text-xs font-semibold text-slate-400 mr-1 flex items-center gap-1">
+          <Sparkles className="w-3.5 h-3.5 text-blue-400" /> Filter Cepat:
+        </span>
+
+        <button
+          onClick={() => handleOptionChange("semua")}
+          className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition border ${
+            activeOption === "semua"
+              ? "bg-slate-700 text-white border-slate-600"
+              : "bg-[#0F172A] text-slate-400 border-slate-800 hover:text-slate-200"
+          }`}
+        >
+          Semua
+        </button>
+
+        <button
+          onClick={() => handleOptionChange("mepet")}
+          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition border flex items-center gap-1.5 ${
+            activeOption === "mepet"
+              ? "bg-amber-500 text-slate-950 border-amber-400 shadow-md shadow-amber-500/20"
+              : "bg-amber-500/10 text-amber-400 border-amber-500/20 hover:bg-amber-500/20"
+          }`}
+        >
+          <Flame className="w-3.5 h-3.5 fill-current" />
+          <span>Deadline Mepet (≤ 3 Hari)</span>
+          {countMepet > 0 && (
+            <span className="px-1.5 py-0.2 rounded-md bg-amber-950 text-amber-300 text-[10px]">
+              {countMepet}
+            </span>
+          )}
+        </button>
+
+        <button
+          onClick={() => handleOptionChange("belum_lunas")}
+          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition border flex items-center gap-1.5 ${
+            activeOption === "belum_lunas"
+              ? "bg-emerald-500 text-slate-950 border-emerald-400 shadow-md shadow-emerald-500/20"
+              : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20"
+          }`}
+        >
+          <Coins className="w-3.5 h-3.5" />
+          <span>Belum Lunas</span>
+          {countBelumLunas > 0 && (
+            <span className="px-1.5 py-0.2 rounded-md bg-emerald-950 text-emerald-300 text-[10px]">
+              {countBelumLunas}
+            </span>
+          )}
+        </button>
+      </div>
+
       {/* FILTER GROUP TABS STATUS */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
         {[
@@ -125,7 +282,7 @@ export default function OrderQueue({ initialOrders }: { initialOrders: OrderItem
           { id: "proses", label: "Sedang Dijahit", icon: Scissors },
           { id: "selesai", label: "Siap Ambil", icon: CheckCircle2 },
           { id: "batal", label: "Retur / Batal", icon: Ban },
-          { id: "semua", label: "Semua Pesanan", icon: Search },
+          { id: "semua", label: "Semua Status", icon: Search },
         ].map((tab) => {
           const Icon = tab.icon;
           const count = countStatus(tab.id);
@@ -134,7 +291,7 @@ export default function OrderQueue({ initialOrders }: { initialOrders: OrderItem
           return (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => handleTabChange(tab.id)}
               className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition border ${
                 isActive
                   ? "bg-blue-600 text-white border-blue-500 shadow-lg shadow-blue-600/20"
@@ -163,11 +320,42 @@ export default function OrderQueue({ initialOrders }: { initialOrders: OrderItem
             const isLunas = sisaBayar <= 0;
             const isUpdating = updatingId === order.id;
 
+            const deadlineInfo = getDeadlineStatus(order.tgl_deadline, order.status_pengerjaan);
+            const isUrgent = deadlineInfo?.type === "mepet" || deadlineInfo?.type === "today" || deadlineInfo?.type === "overdue";
+
+            // Template pesan WhatsApp untuk penjahit
+            const waMessage = encodeURIComponent(
+              `Halo kak ${order.customers?.name || ''}, mengenai pesanan jahit ${order.item_name} di toko kami.`
+            );
+
             return (
               <div
                 key={order.id}
-                className="bg-[#161F30] border border-slate-800/90 rounded-2xl p-5 space-y-4 shadow-lg flex flex-col justify-between hover:border-slate-700/80 transition"
+                className={`bg-[#161F30] border rounded-2xl p-5 space-y-4 shadow-lg flex flex-col justify-between transition relative overflow-hidden ${
+                  isUrgent
+                    ? "border-amber-500/60 ring-1 ring-amber-500/20"
+                    : "border-slate-800/90 hover:border-slate-700/80"
+                }`}
               >
+                {/* Banner Strip khusus jika Deadline Mepet / Overdue */}
+                {deadlineInfo && isUrgent && (
+                  <div
+                    className={`-mx-5 -mt-5 mb-1 px-5 py-1.5 text-[11px] font-extrabold flex items-center justify-between ${
+                      deadlineInfo.type === "overdue"
+                        ? "bg-red-500 text-white"
+                        : deadlineInfo.type === "today"
+                        ? "bg-amber-500 text-slate-950 animate-pulse"
+                        : "bg-amber-500/20 text-amber-300 border-b border-amber-500/30"
+                    }`}
+                  >
+                    <span className="flex items-center gap-1.5 uppercase tracking-wider">
+                      <AlertTriangle className="w-3.5 h-3.5" />
+                      {deadlineInfo.label}
+                    </span>
+                    <span>Deadline: {formatDate(order.tgl_deadline)}</span>
+                  </div>
+                )}
+
                 <div className="space-y-3">
                   {/* Header Kartu: Pelanggan & Status Badge */}
                   <div className="flex items-start justify-between gap-3 border-b border-slate-800/80 pb-3">
@@ -177,19 +365,19 @@ export default function OrderQueue({ initialOrders }: { initialOrders: OrderItem
                       </h3>
                       {order.customers?.phone_number && (
                         <a
-                          href={`https://wa.me/${order.customers.phone_number}`}
+                          href={`https://wa.me/${order.customers.phone_number}?text=${waMessage}`}
                           target="_blank"
                           rel="noreferrer"
                           className="text-[11px] text-emerald-400 hover:underline flex items-center gap-1 mt-0.5 font-medium"
                         >
                           <Phone className="w-3 h-3" />
                           <span>{order.customers.phone_number}</span>
-                          <ExternalLink className="w-2.5 h-2.5 opacity-70" />
+                          <MessageSquare className="w-2.5 h-2.5 opacity-70 ml-0.5" />
                         </a>
                       )}
                     </div>
 
-                    {/* Badge Status */}
+                    {/* Badge Status Pengerjaan */}
                     <span
                       className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border shrink-0 ${
                         order.status_pengerjaan === "antrean"
@@ -262,9 +450,8 @@ export default function OrderQueue({ initialOrders }: { initialOrders: OrderItem
                   </div>
                 </div>
 
-                {/* ACTION BUTTON GROUP (TOMBOL AKSI SESUAI STATUS) */}
+                {/* ACTION BUTTON GROUP */}
                 <div className="pt-3 border-t border-slate-800/80 flex items-center gap-2">
-                  {/* JIKA STATUS: ANTREAN (BELUM DIJAHIT) */}
                   {order.status_pengerjaan === "antrean" && (
                     <>
                       <button
@@ -287,7 +474,6 @@ export default function OrderQueue({ initialOrders }: { initialOrders: OrderItem
                     </>
                   )}
 
-                  {/* JIKA STATUS: PROSES (SEDANG DIJAHIT) */}
                   {order.status_pengerjaan === "proses" && (
                     <button
                       onClick={() => handleUpdateStatus(order.id, "selesai")}
@@ -299,7 +485,6 @@ export default function OrderQueue({ initialOrders }: { initialOrders: OrderItem
                     </button>
                   )}
 
-                  {/* JIKA STATUS: SELESAI (SIAP AMBIL) */}
                   {order.status_pengerjaan === "selesai" && (
                     <div className="w-full flex items-center justify-between bg-emerald-500/10 border border-emerald-500/20 p-2.5 rounded-xl text-emerald-400 text-xs font-semibold">
                       <span className="flex items-center gap-1.5">
@@ -315,7 +500,6 @@ export default function OrderQueue({ initialOrders }: { initialOrders: OrderItem
                     </div>
                   )}
 
-                  {/* JIKA STATUS: BATAL / RETUR */}
                   {order.status_pengerjaan === "batal" && (
                     <button
                       onClick={() => handleUpdateStatus(order.id, "antrean")}
@@ -336,9 +520,9 @@ export default function OrderQueue({ initialOrders }: { initialOrders: OrderItem
           <div className="w-12 h-12 rounded-2xl bg-slate-800 flex items-center justify-center text-slate-500 mx-auto">
             <AlertCircle className="w-6 h-6" />
           </div>
-          <h3 className="text-sm font-bold text-white">Tidak Ada Pesanan Dalam Status Ini</h3>
+          <h3 className="text-sm font-bold text-white">Tidak Ada Pesanan Dalam Filter Ini</h3>
           <p className="text-xs text-slate-400 max-w-sm mx-auto">
-            Belum ada pesanan yang sesuai dengan filter ini. Tambahkan pesanan baru atau pilih tab status lain.
+            Belum ada pesanan yang cocok dengan filter atau kata kunci pencarian Anda.
           </p>
         </div>
       )}
