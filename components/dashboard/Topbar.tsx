@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Search, Bell, Calendar, Plus, Scissors, User } from "lucide-react";
+import Image from "next/image";
+import { Search, Bell, Calendar, Plus, User } from "lucide-react";
 
 interface TopbarProps {
   ownerName?: string;
@@ -92,9 +93,14 @@ export default function Topbar({
       <header className="flex md:hidden h-14 items-center justify-between px-4 bg-[#161F30]/90 backdrop-blur-md border-b border-slate-800 sticky top-0 z-40 select-none">
         {/* Identitas Toko Mobile */}
         <Link href="/dashboard" className="flex items-center gap-2.5 overflow-hidden">
-          <div className="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-md shadow-blue-600/30 shrink-0">
-            <Scissors className="w-4 h-4" />
-          </div>
+          <Image
+            src="/logo.svg"
+            alt="benangku.id logo"
+            width={32}
+            height={32}
+            className="w-8 h-8 object-contain shrink-0"
+            priority
+          />
           <div className="overflow-hidden">
             <h1 className="text-xs font-bold text-white leading-tight truncate">
               {shopName}
