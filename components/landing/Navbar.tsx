@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Scissors,
   Zap,
   Calculator,
   Smartphone,
@@ -26,21 +26,21 @@ export default function Navbar() {
 
   // Deteksi scroll untuk mengubah tampilan Navbar
   useEffect(() => {
-  const handleScroll = () => setIsScrolled(window.scrollY > 20);
-  handleScroll(); // cek posisi awal
-  window.addEventListener("scroll", handleScroll, { passive: true });
-  return () => window.removeEventListener("scroll", handleScroll);
-}, []);
+    const handleScroll = () => setIsScrolled(window.scrollY > 20);
+    handleScroll(); // cek posisi awal
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
-useEffect(() => {
-  document.body.style.overflow = isOpen ? "hidden" : "";
-  const onKey = (e: KeyboardEvent) => e.key === "Escape" && setIsOpen(false);
-  window.addEventListener("keydown", onKey);
-  return () => {
-    document.body.style.overflow = "";
-    window.removeEventListener("keydown", onKey);
-  };
-}, [isOpen]);
+  useEffect(() => {
+    document.body.style.overflow = isOpen ? "hidden" : "";
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setIsOpen(false);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = "";
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [isOpen]);
   
   return (
     <header
@@ -57,9 +57,14 @@ useEffect(() => {
       >
         {/* LOGO */}
         <Link href="/" className="flex items-center gap-2.5 group">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white shadow-md shadow-blue-500/30 group-hover:scale-105 transition-transform duration-300">
-            <Scissors className="w-5 h-5 -rotate-45" />
-          </div>
+          <Image
+            src="/logo.svg"
+            alt="benangku.id logo"
+            width={36}
+            height={36}
+            className="w-9 h-9 object-contain group-hover:scale-105 transition-transform duration-300"
+            priority
+          />
           <div className="flex flex-col">
             <span className="font-extrabold text-lg text-white tracking-tight flex items-center gap-1">
               benangku<span className="text-blue-400">.id</span>
@@ -143,10 +148,15 @@ useEffect(() => {
               <div>
                 {/* DRAWER HEADER */}
                 <div className="flex items-center justify-between pb-6 border-b border-slate-800">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white">
-                      <Scissors className="w-4 h-4 -rotate-45" />
-                    </div>
+                  <div className="flex items-center gap-2.5">
+                    <Image
+                      src="/logo.svg"
+                      alt="benangku.id logo"
+                      width={32}
+                      height={32}
+                      className="w-8 h-8 object-contain"
+                      priority
+                    />
                     <span className="font-bold text-white text-base">
                       benangku<span className="text-blue-400">.id</span>
                     </span>
