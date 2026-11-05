@@ -16,7 +16,7 @@ export default async function DashboardPage() {
     .eq('id', user.id)
     .maybeSingle();
 
-  const { data: orders } = await supabase
+  const { data: rawOrders } = await supabase
     .from('orders')
     .select(`
       id,
@@ -36,7 +36,17 @@ export default async function DashboardPage() {
     `)
     .order('created_at', { ascending: false });
 
-  const allOrders = orders || [];
+  // Transformasi array `customers` menjadi objek tunggal agar sesuai tipe OrderItem
+  const allOrders = (rawOrders || []).map((order) => {
+    const customerObj = Array.isArray(order.customers)
+      ? order.customers[0]
+      : order.customers;
+
+    return {
+      ...order,
+      customers: customerObj || { name: 'Pelanggan', phone_number: '-' },
+    };
+  });
 
   // 3. KALKULASI ANALITIK UTAMA
   const now = new Date();
