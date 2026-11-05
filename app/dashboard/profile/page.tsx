@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
+import { connection } from 'next/server'; // <-- 1. IMPORT CONNECTION
 import { logout } from '@/app/auth/actions';
 import Link from 'next/link';
 import { PRICING_PLANS, formatRupiah } from '@/config/pricing';
@@ -20,6 +21,8 @@ import {
 export const instant = false;
 
 export default async function ProfilePage() {
+  await connection(); // <-- 2. TAMBAHKAN BARIS INI DI PALING ATAS FUNGSI!
+
   const supabase = await createClient();
 
   // 1. Auth Check
