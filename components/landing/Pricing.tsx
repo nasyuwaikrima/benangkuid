@@ -3,41 +3,7 @@
 import { motion } from "framer-motion";
 import { Check } from "lucide-react";
 import Link from "next/link";
-
-interface PricingPlan {
-  id: string;
-  name: string;
-  subtitle: string;
-  price: string;
-  period: string;
-  originalPrice?: string;
-  isPopular?: boolean;
-  badge?: string;
-  features: string[];
-  ctaText: string;
-  ctaHref: string;
-}
-
-const PRICING_PLANS: PricingPlan[] = [
-  {
-    id: "penjahit-lokal",
-    name: "Penjahit Lokal",
-    subtitle: "Penjahit Rumahan / Perorangan",
-    price: "Rp 19.000",
-    period: "/ bulan",
-    originalPrice: "Rp 29.000",
-    isPopular: true,
-    badge: "Promo Peluncuran",
-    features: [
-      "Simpan Ukuran Pelanggan Tanpa Batas",
-      "Kirim Struk WA Otomatis",
-      "Manajemen Antrean Sederhana",
-      "Akses 1 Perangkat HP / Laptop",
-    ],
-    ctaText: "Mulai Sekarang",
-    ctaHref: "/dashboard", // Langsung mengarah ke internal dashboard / register
-  },
-];
+import { PRICING_PLANS } from "@/config/pricing"; // Sesuaikan path alias project kamu
 
 export default function Pricing() {
   return (
@@ -47,11 +13,11 @@ export default function Pricing() {
           Harga Terjangkau Untuk Hasil Maksimal
         </h2>
         <p className="mt-2 text-slate-400 text-xs sm:text-sm">
-          Pilih paket sesuai skala usaha jahit kamu. Tanpa biaya tersembunyi!
+          Coba gratis 14 hari atau langsung pilih paket berlangganan tanpa biaya tersembunyi!
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch justify-center max-w-2xl mx-auto md:max-w-none">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch justify-center max-w-4xl mx-auto">
         {PRICING_PLANS.map((plan) => {
           const isPopular = plan.isPopular;
 
@@ -66,7 +32,11 @@ export default function Pricing() {
               }`}
             >
               {plan.badge && (
-                <div className="absolute -top-3.5 right-6 px-3 py-1 rounded-full bg-blue-600 text-white text-[10px] font-extrabold uppercase tracking-widest shadow-md">
+                <div
+                  className={`absolute -top-3.5 right-6 px-3 py-1 rounded-full text-white text-[10px] font-extrabold uppercase tracking-widest shadow-md ${
+                    isPopular ? "bg-blue-600" : "bg-emerald-600"
+                  }`}
+                >
                   {plan.badge}
                 </div>
               )}
