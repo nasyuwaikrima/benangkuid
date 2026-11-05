@@ -1,15 +1,17 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import {
-  MessageSquare,
   ArrowRight,
   Check,
   Ruler,
   ListChecks,
   Wallet,
+  LayoutDashboard,
+  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
-
-const WA =
-  "https://wa.me/6281234567890?text=Halo%20Admin%20Benangku.id,%20saya%20mau%20coba%20demo";
+import { createClient } from "@/lib/supabase/client";
 
 const FITUR = [
   { icon: Ruler, text: "Ukuran pelanggan tersimpan aman" },
@@ -26,8 +28,26 @@ const ANTREAN = [
 ];
 
 export default function Hero() {
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    const checkUser = async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      setIsLoggedIn(!!user);
+      setLoading(false);
+    };
+
+    checkUser();
+  }, []);
+
+  // Tentukan Link & Label CTA berdasarkan status login
+  const targetLink = isLoggedIn ? "/dashboard" : "/login";
+  const ctaLabel = isLoggedIn ? "Buka Dashboard" : "Coba Gratis 14 Hari Sekarang";
+
   return (
-    <section className="pt-38 md:pt-32 pb-12 px-4 sm:px-6 max-w-5xl mx-auto relative">
+    <section className="pt-38 md:pt-32 pb-12 px-4 sm:px-6 max-w-5xl mx-auto relative select-none">
       <div className="absolute top-1/2 right-0 w-80 h-80 bg-blue-600/15 rounded-full blur-[110px] pointer-events-none" />
 
       <div className="relative grid md:grid-cols-[1.05fr_0.95fr] gap-10 md:gap-12 items-center">
@@ -74,15 +94,20 @@ export default function Hero() {
             className="fade-up mt-7 flex flex-col sm:flex-row items-center justify-center md:justify-start gap-3"
             style={{ animationDelay: "0.3s" }}
           >
+            {/* CTA UTAMA: Mengarah ke /dashboard (atau /login jika belum auth) */}
             <Link
-              href={WA}
-              target="_blank"
+              href={targetLink}
               className="w-full sm:w-auto px-6 py-3 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold text-base shadow-lg shadow-blue-600/25 active:scale-95 transition-all flex items-center justify-center gap-2 group"
             >
-              <MessageSquare className="w-[18px] h-[18px]" />
-              <span>Coba Gratis 14 hari Sekarang</span>
+              {isLoggedIn ? (
+                <LayoutDashboard className="w-[18px] h-[18px]" />
+              ) : (
+                <Sparkles className="w-[18px] h-[18px]" />
+              )}
+              <span>{loading ? "Memuat..." : ctaLabel}</span>
               <ArrowRight className="w-[18px] h-[18px] group-hover:translate-x-1 transition-transform" />
             </Link>
+
             <a
               href="#simulasi"
               className="w-full sm:w-auto px-6 py-3 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 font-medium text-base transition-all text-center"
@@ -119,7 +144,7 @@ export default function Hero() {
               </span>
             </div>
 
-            {/* Tahap pengerjaan: garis putus-putus seperti jahitan */}
+            {/* Tahap pengerjaan */}
             <div className="relative mt-6">
               <div className="absolute top-3 left-[12.5%] right-[12.5%] border-t-2 border-dashed border-slate-700" />
               <div
