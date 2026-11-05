@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { Check } from "lucide-react";
 import Link from "next/link";
-import { PRICING_PLANS } from "@/config/pricing"; // Sesuaikan path alias project kamu
+import { PRICING_PLANS, formatRupiah } from "@/config/pricing";
 
 export default function Pricing() {
   return (
@@ -20,6 +20,7 @@ export default function Pricing() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch justify-center max-w-4xl mx-auto">
         {PRICING_PLANS.map((plan) => {
           const isPopular = plan.isPopular;
+          const targetHref = plan.id === "trial" ? "/login" : "/dashboard/upgrade";
 
           return (
             <motion.div
@@ -50,13 +51,13 @@ export default function Pricing() {
                 </h3>
 
                 <div className="flex items-baseline gap-2 mb-6">
-                  {plan.originalPrice && (
+                  {plan.originalAmount !== undefined && (
                     <span className="text-sm text-slate-500 line-through font-semibold">
-                      {plan.originalPrice}
+                      {formatRupiah(plan.originalAmount)}
                     </span>
                   )}
                   <span className="text-4xl font-extrabold text-white">
-                    {plan.price}
+                    {formatRupiah(plan.priceAmount)}
                   </span>
                   <span className="text-xs text-slate-400">{plan.period}</span>
                 </div>
@@ -72,7 +73,7 @@ export default function Pricing() {
               </div>
 
               <Link
-                href={plan.ctaHref}
+                href={targetHref}
                 className={`w-full py-3.5 rounded-xl text-xs font-semibold text-center transition-all ${
                   isPopular
                     ? "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-lg shadow-blue-600/30"
