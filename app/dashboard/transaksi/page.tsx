@@ -13,12 +13,57 @@ import {
   Receipt,
   Sparkles,
   CreditCard,
+  ArrowRight,
 } from 'lucide-react';
 
 export const instant = false;
 
 interface PageProps {
   searchParams: Promise<{ id?: string }>;
+}
+
+/**
+ * Helper untuk mengonversi string tanggal Pixpayz/Supabase ke Date object WIB (+07:00) yang aman.
+ */
+function parseSafeDate(dateStr: string | null | undefined): Date | null {
+  if (!dateStr) return null;
+  let formattedStr = dateStr.trim();
+  
+  if (!formattedStr.includes('T') && formattedStr.includes(' ')) {
+    formattedStr = formattedStr.replace(' ', 'T');
+  }
+  if (!formattedStr.includes('+') && !formattedStr.endsWith('Z')) {
+    formattedStr += '+07:00';
+  }
+
+  const parsed = new Date(formattedStr);
+  return isNaN(parsed.getTime()) ? null : parsed;
+}
+
+/**
+ * Helper untuk mengecek apakah sebuah transaksi bernilai expired secara aman.
+ */
+function checkIsExpired(expiredAt: string | null | undefined, now: Date = new Date()): boolean {
+  const parsedDate = parseSafeDate(expiredAt);
+  if (!parsedDate) return false;
+  return parsedDate.getTime() < now.getTime();
+}
+
+/**
+ * Helper untuk format tampilan tanggal Indonesia (WIB)
+ */
+function formatWibDate(dateStr: string | null | undefined): string {
+  const parsedDate = parseSafeDate(dateStr);
+  if (!parsedDate) return '-';
+
+  return parsedDate.toLocaleString('id-ID', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'Asia/Jakarta',
+  });
 }
 
 export default async function TransaksiPage({ searchParams }: PageProps) {
@@ -47,24 +92,26 @@ export default async function TransaksiPage({ searchParams }: PageProps) {
   const getStatusBadge = (status: string) => {
     switch (status.toLowerCase()) {
       case 'paid':
+      case 'active':
+      case 'success':
         return (
-          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
             <CheckCircle2 className="w-3.5 h-3.5" />
             <span>Berhasil</span>
           </span>
         );
       case 'pending':
         return (
-          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
-            <Clock className="w-3.5 h-3.5" />
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+            <Clock className="w-3.5 h-3.5 animate-pulse" />
             <span>Menunggu Pembayaran</span>
           </span>
         );
       case 'expired':
         return (
-          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20">
             <XCircle className="w-3.5 h-3.5" />
-            <span>Kadaluarsa</span>
+            <span>Kedaluwarsa</span>
           </span>
         );
       default:
@@ -110,10 +157,23 @@ export default async function TransaksiPage({ searchParams }: PageProps) {
       );
     }
 
-    const isTimeExpired = transaction.expired_at ? new Date(transaction.expired_at) < new Date() : false;
-    const isPending = transaction.status.toLowerCase() === 'pending' && !isTimeExpired;
-    const isPaid = transaction.status.toLowerCase() === 'paid';
-    const isExpired = transaction.status.toLowerCase() === 'expired' || isTimeExpired;
+    const isTimeExpired = checkIsExpired(transaction.expired_at);
+    const rawStatus = transaction.status.toLowerCase();
+
+    // Jika status DB 'pending' tetapi waktu kedaluwarsa sudah lewat, update otomatis DB
+    if (rawStatus === 'pending' && isTimeExpired) {
+      await supabase
+        .from('subscriptions')
+        .update({ status: 'expired' })
+        .eq('id', transaction.id);
+
+      transaction.status = 'expired';
+    }
+
+    const currentStatus = transaction.status.toLowerCase();
+    const isPending = currentStatus === 'pending' && !isTimeExpired;
+    const isPaid = ['paid', 'active', 'success'].includes(currentStatus);
+    const isExpired = currentStatus === 'expired' || isTimeExpired;
 
     return (
       <div className="max-w-xl mx-auto space-y-6 pb-12 select-none animate-in fade-in duration-200">
@@ -153,7 +213,9 @@ export default async function TransaksiPage({ searchParams }: PageProps) {
             {isPending && transaction.expired_at && (
               <div className="pt-2 flex items-center justify-center gap-1.5 text-xs text-amber-400 font-semibold">
                 <Clock className="w-3.5 h-3.5" />
-                <span>Batas Pembayaran: {new Date(transaction.expired_at).toLocaleString('id-ID')}</span>
+                <span>
+                  Batas Pembayaran: {formatWibDate(transaction.expired_at)} WIB
+                </span>
               </div>
             )}
           </div>
@@ -179,9 +241,9 @@ export default async function TransaksiPage({ searchParams }: PageProps) {
               <div className="w-12 h-12 rounded-full bg-rose-500/20 text-rose-400 flex items-center justify-center mx-auto mb-2">
                 <XCircle className="w-6 h-6" />
               </div>
-              <h3 className="text-base font-bold text-white">Tagihan Kadaluarsa</h3>
+              <h3 className="text-base font-bold text-white">Tagihan Kedaluwarsa</h3>
               <p className="text-xs text-slate-300">
-                Waktu pembayaran telah habis. Kode QRIS sudah tidak dapat digunakan.
+                Batas waktu pembayaran untuk tagihan ini telah habis. Kode QRIS sudah tidak berlaku.
               </p>
             </div>
           )}
@@ -191,9 +253,10 @@ export default async function TransaksiPage({ searchParams }: PageProps) {
             {isExpired && (
               <Link
                 href="/dashboard/upgrade"
-                className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl text-center shadow-lg transition"
+                className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl text-center shadow-lg transition flex items-center justify-center gap-2"
               >
-                Buat Tagihan Baru
+                <span>Buat Tagihan Baru</span>
+                <ArrowRight className="w-4 h-4" />
               </Link>
             )}
             <Link
@@ -269,8 +332,10 @@ export default async function TransaksiPage({ searchParams }: PageProps) {
               </thead>
               <tbody className="divide-y divide-slate-800/80">
                 {transactions.map((item) => {
-                  const isTimeExpired = item.expired_at ? new Date(item.expired_at) < new Date() : false;
-                  const displayStatus = item.status.toLowerCase() === 'pending' && isTimeExpired ? 'expired' : item.status;
+                  const isTimeExpired = checkIsExpired(item.expired_at);
+                  const rawStatus = item.status.toLowerCase();
+                  const displayStatus =
+                    rawStatus === 'pending' && isTimeExpired ? 'expired' : rawStatus;
 
                   return (
                     <tr key={item.id} className="hover:bg-slate-800/30 transition">
@@ -284,23 +349,17 @@ export default async function TransaksiPage({ searchParams }: PageProps) {
                         {formatRupiah(item.amount)}
                       </td>
                       <td className="px-6 py-4 text-slate-400">
-                        {new Date(item.created_at).toLocaleDateString('id-ID', {
-                          day: 'numeric',
-                          month: 'short',
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
+                        {formatWibDate(item.created_at)}
                       </td>
                       <td className="px-6 py-4">{getStatusBadge(displayStatus)}</td>
                       <td className="px-6 py-4 text-right">
-                        {displayStatus.toLowerCase() === 'pending' ? (
+                        {displayStatus === 'pending' ? (
                           <Link
                             href={`/dashboard/transaksi?id=${item.invoice_id}`}
                             className="inline-flex items-center gap-1 font-bold text-blue-400 hover:text-blue-300 transition"
                           >
                             <span>Bayar Sekarang</span>
-                            <span>&rarr;</span>
+                            <ArrowRight className="w-3.5 h-3.5" />
                           </Link>
                         ) : (
                           <Link

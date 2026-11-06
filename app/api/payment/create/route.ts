@@ -2,7 +2,36 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getPlan } from '@/config/pricing';
 import { activateSubscription } from '@/lib/payment/activate';
-import { Subscription } from '@/types/database'; // Adjust path if needed
+import { Subscription } from '@/types/database';
+
+/**
+ * Helper untuk memformat string tanggal dari Pixpayz agar aman di-parse
+ * sebagai Timezone Asia/Jakarta (WIB / +07:00) ke ISO String.
+ */
+function parsePixpayzDate(dateStr: string | undefined | null): string {
+  if (!dateStr) {
+    // Fallback: Default 1 jam dari sekarang jika dari API kosong
+    return new Date(Date.now() + 60 * 60 * 1000).toISOString();
+  }
+
+  // Jika tanggal dari Pixpayz belum memiliki penanda timezone (+07:00 / Z),
+  // format ulang string "YYYY-MM-DD HH:mm:ss" menjadi ISO dengan offset WIB "+07:00"
+  let formattedStr = dateStr.trim();
+  if (!formattedStr.includes('T') && formattedStr.includes(' ')) {
+    formattedStr = formattedStr.replace(' ', 'T');
+  }
+
+  if (!formattedStr.includes('+') && !formattedStr.endsWith('Z')) {
+    formattedStr += '+07:00';
+  }
+
+  const dateObj = new Date(formattedStr);
+  
+  // Jika parsing valid, kembalikan ISO String, jika tidak gunakan fallback 1 jam
+  return isNaN(dateObj.getTime())
+    ? new Date(Date.now() + 60 * 60 * 1000).toISOString()
+    : dateObj.toISOString();
+}
 
 export async function POST(req: Request) {
   try {
@@ -37,7 +66,7 @@ export async function POST(req: Request) {
 
     if (pendingSub) {
       const isExpired = pendingSub.expired_at
-        ? new Date(pendingSub.expired_at) < new Date()
+        ? new Date(pendingSub.expired_at).getTime() < Date.now()
         : false;
 
       if (!isExpired) {
@@ -111,6 +140,9 @@ export async function POST(req: Request) {
       );
     }
 
+    // Mengonversi expired_at dari Pixpayz agar mempertahankan offset +07:00 (WIB)
+    const validExpiredAt = parsePixpayzDate(data.expired_at);
+
     const { error: dbError } = await supabase.from('subscriptions').insert({
       shop_id: user.id,
       invoice_id: data.invoice_id,
@@ -118,7 +150,7 @@ export async function POST(req: Request) {
       plan: plan.id as 'pro',
       status: 'pending',
       qris_image: data.qris_image,
-      expired_at: data.expired_at,
+      expired_at: validExpiredAt,
     });
 
     if (dbError) {
