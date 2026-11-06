@@ -34,7 +34,7 @@ export default function OrderEditModal({
       detail_instruksi: form.detail_instruksi,
       total_biaya: Number(form.total_biaya) || 0,
       dp_dibayar: Number(form.dp_dibayar) || 0,
-      tgl_deadline: form.tgl_deadline || null,
+      tgl_deadline: form.tgl_deadline || undefined,
     });
   };
 
