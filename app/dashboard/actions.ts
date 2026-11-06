@@ -5,12 +5,15 @@ import { onboardingSchema } from '@/lib/validations/shop';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { checkShopAccess } from '@/lib/subscription';
 import { revalidatePath } from 'next/cache';
+import { sendNewShopAlertToTelegram } from '@/lib/telegram/AlertUserBaru';
 
-// 1. Action Onboarding Toko (Rate Limit + Zod Validation)
+// 1. Action Onboarding Toko (Rate Limit + Zod Validation + Telegram Admin Alert)
 export async function submitOnboarding(formData: FormData) {
   const supabase = await createClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) {
     return { success: false, error: 'Sesi tidak valid, silakan login kembali.' };
   }
@@ -33,19 +36,30 @@ export async function submitOnboarding(formData: FormData) {
     return { success: false, error: errorMessage };
   }
 
-  // Update Database
-  const { error } = await supabase
+  // Update Database & Ambil Data Profil Toko Terkait
+  const { data: updatedShop, error } = await supabase
     .from('shops')
     .update({
       shop_name: validation.data.shop_name,
       whatsapp_number: validation.data.whatsapp_number,
       is_onboarded: true,
     })
-    .eq('id', user.id);
+    .eq('id', user.id)
+    .select('owner_name, email')
+    .single();
 
   if (error) {
     return { success: false, error: 'Gagal memperbarui profil toko: ' + error.message };
   }
+
+  // Kirim Notifikasi Otomatis ke Telegram Admin secara Background (Non-blocking)
+  sendNewShopAlertToTelegram({
+    shopName: validation.data.shop_name,
+    whatsappNumber: validation.data.whatsapp_number,
+    ownerName: updatedShop?.owner_name || user.user_metadata?.full_name || 'Pemilik Toko',
+    ownerEmail: updatedShop?.email || user.email || '-',
+    userId: user.id,
+  }).catch((err) => console.error('[Telegram Onboarding Alert Failed]:', err));
 
   revalidatePath('/dashboard');
   return { success: true };
@@ -54,7 +68,9 @@ export async function submitOnboarding(formData: FormData) {
 // 2. Action Tambah Pelanggan (Subscription Guard + Limit Check)
 export async function createCustomerAction(formData: FormData) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   if (!user) {
     return { success: false, error: 'Sesi telah berakhir. Silakan login kembali.' };
