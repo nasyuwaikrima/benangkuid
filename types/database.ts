@@ -5,7 +5,7 @@ export interface Shop {
   shop_name: string | null;
   whatsapp_number: string | null;
   is_onboarded: boolean;
-  subscription_status: 'trialing' | 'paid' | 'pending' | 'expired'; // Disesuaikan dengan SQL
+  subscription_status: 'trialing' | 'paid' | 'pending' | 'expired';
   trial_ends_at: string;
   pro_valid_until: string | null;
   created_at: string;
@@ -28,7 +28,6 @@ export interface CustomerMeasurement {
   hip?: number;
   shoulder?: number;
   sleeve?: number;
-  // shirt_length dihapus karena tidak ada di schema SQL
   pants_length?: number;
   notes?: string;
   updated_at: string;
@@ -38,7 +37,6 @@ export interface Order {
   id: string;
   shop_id: string;
   customer_id: string;
-  // measurement_id dihapus karena tidak ada di schema SQL
   item_name: string;
   service_type: string;
   detail_instruksi: string;
@@ -51,7 +49,6 @@ export interface Order {
   customer?: Customer;
 }
 
-// Interface Baru sesuai Tabel public.subscriptions
 export interface Subscription {
   id: string;
   shop_id: string;
@@ -63,4 +60,27 @@ export interface Subscription {
   expired_at?: string | null;
   created_at: string;
   updated_at: string;
+}
+
+// ===== NOTIFIKASI (dikontrol via Telegram bot) =====
+export type NotificationType = 'info' | 'promo' | 'warning';
+
+export interface NotificationRow {
+  id: number;
+  shop_id: string | null; // null = broadcast ke semua toko
+  title: string;
+  body: string;
+  type: NotificationType;
+  created_by: string | null;
+  expires_at: string | null;
+  created_at: string;
+}
+
+export interface NotificationItem {
+  id: number;
+  title: string;
+  body: string;
+  type: NotificationType;
+  created_at: string;
+  is_read: boolean;
 }
