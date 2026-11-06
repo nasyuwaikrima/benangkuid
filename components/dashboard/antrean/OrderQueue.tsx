@@ -118,11 +118,11 @@ export default function OrderQueue({
       if (error) throw error;
 
       setOrders((prev) =>
-        prev.map((o) => (o.id === orderId ? { ...o, ...payload } : o))
+        prev.map((o) => (o.id === orderId ? ({ ...o, ...payload } as OrderWithCustomer) : o))
       );
 
       if (activeDetailOrder?.id === orderId) {
-        setActiveDetailOrder((prev) => (prev ? { ...prev, ...payload } : null));
+        setActiveDetailOrder((prev) => (prev ? ({ ...prev, ...payload } as OrderWithCustomer) : null));
       }
 
       router.refresh();
@@ -141,11 +141,11 @@ export default function OrderQueue({
       if (error) throw error;
 
       setOrders((prev) =>
-        prev.map((o) => (o.id === editingOrder.id ? { ...o, ...payload } : o))
+        prev.map((o) => (o.id === editingOrder.id ? ({ ...o, ...payload } as OrderWithCustomer) : o))
       );
 
       if (activeDetailOrder?.id === editingOrder.id) {
-        setActiveDetailOrder((prev) => (prev ? { ...prev, ...payload } : null));
+        setActiveDetailOrder((prev) => (prev ? ({ ...prev, ...payload } as OrderWithCustomer) : null));
       }
 
       setEditingOrder(null);
@@ -158,8 +158,8 @@ export default function OrderQueue({
   };
 
   // Helper Kalkulasi Deadline
-  const getDeadlineStatus = (deadlineStr: string | null, status: string) => {
-    if (!deadlineStr || status === 'selesai' || status === 'batal') return null;
+  const getDeadlineStatus = (deadlineStr: string | null | undefined, status: string) => {
+    if (!deadlineStr || (status as string) === 'selesai' || (status as string) === 'batal') return null;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -175,7 +175,7 @@ export default function OrderQueue({
   };
 
   const filteredOrders = orders.filter((order) => {
-    const matchesTab = activeTab === 'semua' || order.status_pengerjaan === activeTab;
+    const matchesTab = activeTab === 'semua' || (order.status_pengerjaan as string) === activeTab;
     const customerName = order.customers?.name || '';
     const phone = order.customers?.phone_number || '';
     const matchesSearch =
@@ -195,14 +195,14 @@ export default function OrderQueue({
     } else if (activeOption === 'terlambat') {
       matchesOption = deadlineInfo?.type === 'overdue';
     } else if (activeOption === 'belum_lunas') {
-      matchesOption = sisaBayar > 0 && order.status_pengerjaan !== 'batal';
+      matchesOption = sisaBayar > 0 && (order.status_pengerjaan as string) !== 'batal';
     }
 
     return matchesTab && matchesSearch && matchesOption;
   });
 
   const countStatus = (status: string) =>
-    orders.filter((o) => status === 'semua' || o.status_pengerjaan === status).length;
+    orders.filter((o) => status === 'semua' || (o.status_pengerjaan as string) === status).length;
 
   const countMepet = orders.filter((o) => {
     const d = getDeadlineStatus(o.tgl_deadline, o.status_pengerjaan);
@@ -210,7 +210,7 @@ export default function OrderQueue({
   }).length;
 
   const countBelumLunas = orders.filter(
-    (o) => o.total_biaya - o.dp_dibayar > 0 && o.status_pengerjaan !== 'batal'
+    (o) => o.total_biaya - o.dp_dibayar > 0 && (o.status_pengerjaan as string) !== 'batal'
   ).length;
 
   return (
