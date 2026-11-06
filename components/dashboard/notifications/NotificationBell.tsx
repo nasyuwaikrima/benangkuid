@@ -12,13 +12,13 @@ interface NotificationBellProps {
   onMarkAllRead: () => void;
 }
 
-const TYPE_STYLE: Record<NotificationType, { icon: typeof Info; box: string }> = {
+export const TYPE_STYLE: Record<NotificationType, { icon: typeof Info; box: string }> = {
   info: { icon: Info, box: "bg-blue-500/15 text-blue-400" },
   promo: { icon: Megaphone, box: "bg-emerald-500/15 text-emerald-400" },
   warning: { icon: TriangleAlert, box: "bg-amber-500/15 text-amber-400" },
 };
 
-function timeAgo(iso: string): string {
+export function timeAgo(iso: string): string {
   const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
   if (diff < 60) return "Baru saja";
   if (diff < 3600) return `${Math.floor(diff / 60)} menit lalu`;

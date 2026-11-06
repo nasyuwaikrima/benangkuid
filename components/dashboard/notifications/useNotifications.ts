@@ -7,12 +7,14 @@ import {
   markNotificationRead,
 } from "@/app/dashboard/notification-actions";
 import type { NotificationItem, NotificationRow } from "@/types/database";
+import { emitNotifRead, NOTIF_READ_EVENT, type NotifReadDetail } from "./events";
 
 const MAX_ITEMS = 30;
 
 export function useNotifications(
   shopId: string | undefined,
-  initial: NotificationItem[] = []
+  initial: NotificationItem[] = [],
+  channelName = "bell" // nama unik per pemakai hook agar channel realtime tidak bentrok
 ) {
   const [items, setItems] = useState<NotificationItem[]>(initial);
 
@@ -22,7 +24,7 @@ export function useNotifications(
     const supabase = createClient();
 
     const channel = supabase
-      .channel(`notifications:${shopId}`)
+      .channel(`notifications:${channelName}:${shopId}`)
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "notifications" },
@@ -59,15 +61,27 @@ export function useNotifications(
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [shopId]);
+  }, [shopId, channelName]);
+
+  // Dengarkan perubahan "dibaca" dari komponen lain
+  useEffect(() => {
+    const onRead = (e: Event) => {
+      const { ids } = (e as CustomEvent<NotifReadDetail>).detail;
+      setItems((prev) =>
+        prev.map((n) => (ids === "all" || ids.includes(n.id) ? { ...n, is_read: true } : n))
+      );
+    };
+    window.addEventListener(NOTIF_READ_EVENT, onRead);
+    return () => window.removeEventListener(NOTIF_READ_EVENT, onRead);
+  }, []);
 
   const markRead = useCallback((id: number) => {
-    setItems((prev) => prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)));
+    emitNotifRead({ ids: [id] }); // memperbarui semua pemakai hook (termasuk ini)
     void markNotificationRead(id);
   }, []);
 
   const markAllRead = useCallback(() => {
-    setItems((prev) => prev.map((n) => ({ ...n, is_read: true })));
+    emitNotifRead({ ids: "all" });
     void markAllNotificationsRead();
   }, []);
 
