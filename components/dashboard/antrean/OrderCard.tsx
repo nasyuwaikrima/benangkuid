@@ -37,8 +37,8 @@ export default function OrderCard({
   const sisaBayar = Math.max(0, totalBiaya - dpDibayar);
   const isLunas = totalBiaya > 0 ? sisaBayar <= 0 : false;
 
-  // Helper Kalkulasi Deadline
-  const getDeadlineInfo = (deadlineStr: string | null, status: string) => {
+  // Helper Kalkulasi Deadline (Mendukung string, null, atau undefined)
+  const getDeadlineInfo = (deadlineStr: string | null | undefined, status: string) => {
     if (!deadlineStr || status === 'selesai' || status === 'diambil' || status === 'batal') return null;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -60,12 +60,14 @@ export default function OrderCard({
     deadlineInfo?.type === 'today' ||
     deadlineInfo?.type === 'overdue';
 
-  const formatDate = (dateStr: string | null) => {
+  const formatDate = (dateStr: string | null | undefined) => {
     if (!dateStr) return 'Tanpa Deadline';
     return new Intl.DateTimeFormat('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }).format(
       new Date(dateStr)
     );
   };
+
+  const statusPengerjaan = order.status_pengerjaan as string;
 
   return (
     <div
@@ -116,24 +118,24 @@ export default function OrderCard({
 
           <span
             className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border shrink-0 ${
-              order.status_pengerjaan === 'antrean'
+              statusPengerjaan === 'antrean'
                 ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                : order.status_pengerjaan === 'proses'
+                : statusPengerjaan === 'proses'
                 ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
-                : order.status_pengerjaan === 'selesai'
+                : statusPengerjaan === 'selesai'
                 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                : order.status_pengerjaan === 'diambil'
+                : statusPengerjaan === 'diambil'
                 ? 'bg-purple-500/10 text-purple-400 border-purple-500/20'
                 : 'bg-red-500/10 text-red-400 border-red-500/20'
             }`}
           >
-            {order.status_pengerjaan === 'antrean'
+            {statusPengerjaan === 'antrean'
               ? 'Belum Dijahit'
-              : order.status_pengerjaan === 'proses'
+              : statusPengerjaan === 'proses'
               ? 'Sedang Dijahit'
-              : order.status_pengerjaan === 'selesai'
+              : statusPengerjaan === 'selesai'
               ? 'Selesai'
-              : order.status_pengerjaan === 'diambil'
+              : statusPengerjaan === 'diambil'
               ? 'Sudah Diambil'
               : 'Batal'}
           </span>
@@ -201,7 +203,7 @@ export default function OrderCard({
 
       {/* Group Tombol Eksekusi & Detail Ukuran */}
       <div className="pt-2 border-t border-slate-800/80 flex items-center gap-2">
-        {order.status_pengerjaan === 'antrean' && (
+        {statusPengerjaan === 'antrean' && (
           <>
             <button
               onClick={() => onUpdateStatus(order.id, 'proses')}
@@ -221,7 +223,7 @@ export default function OrderCard({
           </>
         )}
 
-        {order.status_pengerjaan === 'proses' && (
+        {statusPengerjaan === 'proses' && (
           <>
             <button
               onClick={() => onUpdateStatus(order.id, 'selesai')}
@@ -249,7 +251,7 @@ export default function OrderCard({
           </>
         )}
 
-        {order.status_pengerjaan === 'selesai' && (
+        {statusPengerjaan === 'selesai' && (
           <div className="w-full flex gap-2">
             <button
               onClick={() =>
@@ -285,7 +287,7 @@ export default function OrderCard({
           </div>
         )}
 
-        {order.status_pengerjaan === 'diambil' && (
+        {statusPengerjaan === 'diambil' && (
           <div className="w-full flex gap-2">
             <div className="flex-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5">
               <PackageCheck className="w-4 h-4" />
@@ -301,7 +303,7 @@ export default function OrderCard({
           </div>
         )}
 
-        {order.status_pengerjaan === 'batal' && (
+        {statusPengerjaan === 'batal' && (
           <div className="w-full flex gap-2">
             <button
               onClick={() => onUpdateStatus(order.id, 'antrean')}
