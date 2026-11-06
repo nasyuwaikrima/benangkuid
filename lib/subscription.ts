@@ -10,24 +10,47 @@ export interface AccessGuard {
   daysRemaining: number;
 }
 
+/**
+ * Memeriksa hak akses toko berdasarkan status langganan dan kuota pengunaan.
+ */
 export function checkShopAccess(
   shop: Shop,
   currentCustomerCount: number = 0,
   currentOrderCount: number = 0,
   now: Date = new Date()
 ): AccessGuard {
-  const trialEnd = new Date(shop.trial_ends_at);
+  // 1. Parsing Tanggal secara Aman
+  const trialEnd = shop.trial_ends_at ? new Date(shop.trial_ends_at) : new Date(0);
   const proEnd = shop.pro_valid_until ? new Date(shop.pro_valid_until) : null;
 
-  const status = shop.subscription_status as string;
+  // 2. Normalisasi Status Kebal terhadap Case-Sensitivity
+  const status = (shop.subscription_status || '').toLowerCase().trim();
 
-  const isProActive = (status === 'active' || status === 'paid') && proEnd !== null && proEnd > now;
-  const isTrialActive = status === 'trialing' && trialEnd > now;
+  // 3. Pengecekan Status Aktif Pro (Mendukung 'active', 'paid', atau 'success')
+  const isProStatus = ['active', 'paid', 'success'].includes(status);
+  const isProActive =
+    isProStatus &&
+    proEnd !== null &&
+    !isNaN(proEnd.getTime()) &&
+    proEnd.getTime() > now.getTime();
+
+  // 4. Pengecekan Status Aktif Trial
+  const isTrialActive =
+    !isProActive &&
+    (status === 'trialing' || status === 'trial') &&
+    !isNaN(trialEnd.getTime()) &&
+    trialEnd.getTime() > now.getTime();
+
+  // 5. Penentuan Status Expired
   const isExpired = !isProActive && !isTrialActive;
 
+  // 6. Hitung Sisa Hari
   const activeEndDate = isProActive ? proEnd! : trialEnd;
-  const daysRemaining = Math.max(0, Math.ceil((activeEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+  const daysRemaining = isExpired
+    ? 0
+    : Math.max(0, Math.ceil((activeEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
 
+  // Jika Expired, langsung kunci akses
   if (isExpired) {
     return {
       canCreateCustomer: false,
@@ -43,6 +66,7 @@ export function checkShopAccess(
   let canCreateOrder = true;
   let blockReason: AccessGuard['blockReason'] = null;
 
+  // 7. Penguncian Limit Khusus Akun Trial (Akun Pro lewati blok ini / Unlimited)
   if (isTrialActive) {
     if (currentCustomerCount >= PLAN_LIMITS.trial.maxCustomers) {
       canCreateCustomer = false;
