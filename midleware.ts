@@ -1,14 +1,14 @@
 // `middleware.ts`
 import { NextResponse, type NextRequest } from 'next/server';
 
-// Daftar domain yang diizinkan mengakses API (Sesuaikan domain kamu)
+// Daftar domain resmi benangku.web.id
 const ALLOWED_ORIGINS = [
   'https://benangku.web.id',
   'https://www.benangku.web.id',
   process.env.NEXT_PUBLIC_APP_URL,
 ].filter(Boolean) as string[];
 
-// Pola URL scanner / malicious path yang sering diserang bot
+// Pola URL scanner / exploit path
 const MALICIOUS_PATH_PATTERNS = [
   /\/\.env/i,
   /\/\.git/i,
@@ -25,7 +25,7 @@ const MALICIOUS_PATH_PATTERNS = [
   /\.aspx$/i,
 ];
 
-// Pola Injection sederhana di URL/Query Params
+// Pola Injection sederhana di URL query
 const INJECTION_PATTERNS = [
   /<script\b[^>]*>/i,
   /UNION\s+SELECT/i,
@@ -34,7 +34,7 @@ const INJECTION_PATTERNS = [
   /base64_decode/i,
 ];
 
-// Bot / Scanner User-Agent Hitlist
+// Bot & Scanner User-Agent Hitlist
 const BAD_USER_AGENTS = [
   'sqlmap',
   'nikto',
@@ -52,15 +52,21 @@ export async function middleware(req: NextRequest) {
   const url = `${pathname}${search}`;
   const method = req.method;
   const origin = req.headers.get('origin');
+  const referer = req.headers.get('referer');
   const userAgent = req.headers.get('user-agent') || '';
-  const ip = req.headers.get('x-forwarded-for')?.split(',')[0] || req.headers.get('x-real-ip') || '127.0.0.1';
+  const ip =
+    req.headers.get('x-forwarded-for')?.split(',')[0] ||
+    req.headers.get('x-real-ip') ||
+    '127.0.0.1';
 
   let blockReason: string | null = null;
 
   // -----------------------------------------------------------------
-  // 1. FILTER BOT SCANNER DARI USER-AGENT
+  // 1. FILTER BOT SCANNER BERDASARKAN USER-AGENT (Termasuk tool scanner CLI)
   // -----------------------------------------------------------------
-  const isBadAgent = BAD_USER_AGENTS.some((agent) => userAgent.toLowerCase().includes(agent));
+  const isBadAgent = BAD_USER_AGENTS.some((agent) =>
+    userAgent.toLowerCase().includes(agent)
+  );
   if (isBadAgent) {
     blockReason = `Suspicious User-Agent Detected (${userAgent})`;
   }
@@ -69,7 +75,9 @@ export async function middleware(req: NextRequest) {
   // 2. DETEKSI ANCAMAN MALICIOUS PATH (LFI / EXPLOIT PATH)
   // -----------------------------------------------------------------
   if (!blockReason) {
-    const isMaliciousPath = MALICIOUS_PATH_PATTERNS.some((pattern) => pattern.test(pathname));
+    const isMaliciousPath = MALICIOUS_PATH_PATTERNS.some((pattern) =>
+      pattern.test(pathname)
+    );
     if (isMaliciousPath) {
       blockReason = `Malicious Path / Exploit Attempt (${pathname})`;
     }
@@ -79,56 +87,64 @@ export async function middleware(req: NextRequest) {
   // 3. DETEKSI INJECTION PAYLOAD DI URL QUERY
   // -----------------------------------------------------------------
   if (!blockReason && search) {
-    const isInjection = INJECTION_PATTERNS.some((pattern) => pattern.test(search));
+    const isInjection = INJECTION_PATTERNS.some((pattern) =>
+      pattern.test(search)
+    );
     if (isInjection) {
       blockReason = `SQLi / XSS Injection Pattern Detected in Query Params`;
     }
   }
 
   // -----------------------------------------------------------------
-  // 4. BLOCK REQUEST API DARI LUAR (STRICT CORS & ORIGIN GUARD)
+  // 4. STRICT API GUARD: BLOKIR CURL / DIRECT API CALL DARI LUAR
   // -----------------------------------------------------------------
   if (!blockReason && pathname.startsWith('/api/')) {
-    // Exception: Webhook dari Payment Gateway (Pixpayz / Telegram Webhook)
-    const isPublicWebhook = pathname.startsWith('/api/webhook/');
+    // Pengecualian: Webhook dari Payment Gateway & Telegram
+    const isPublicWebhook =
+      pathname.startsWith('/api/webhook/') ||
+      pathname.startsWith('/api/internal/');
 
-    if (!isPublicWebhook) {
-      if (process.env.NODE_ENV === 'production') {
-        // Jika ada header Origin, pastikan cocok dengan domain resmi
-        if (origin && !ALLOWED_ORIGINS.includes(origin)) {
-          blockReason = `Unauthorized External API Access (Forbidden Origin: ${origin})`;
-        }
+    if (!isPublicWebhook && process.env.NODE_ENV === 'production') {
+      const hasValidOrigin = origin && ALLOWED_ORIGINS.includes(origin);
+      const hasValidReferer =
+        referer && ALLOWED_ORIGINS.some((domain) => referer.startsWith(domain));
+
+      // Jika tidak membawa Origin maupun Referer resmi (ciri khas cURL / Postman tanpa header khusus), BLOKIR!
+      if (!hasValidOrigin && !hasValidReferer) {
+        blockReason = `Direct API Access Blocked (Missing or Invalid Origin/Referer via CLI/cURL)`;
       }
     }
   }
 
   // -----------------------------------------------------------------
-  // JIKA TERDAPAT ANCAMAN -> BLOCK & ALERTI KE TELEGRAM
+  // JIKA TERDAPAT ANCAMAN -> BLOCK & KIRIM TELEGRAM ALERT
   // -----------------------------------------------------------------
   if (blockReason) {
-    // Kirim Laporan ke Telegram via API internal non-blocking
     const alertData = {
       ip,
       method,
       path: url,
       reason: blockReason,
       userAgent,
-      origin: origin || undefined,
+      origin: origin || referer || undefined,
     };
 
-    // Kirim request webhook background ke Telegram agar tidak menahan response Client
+    // Kirim webhook internal di background agar tidak membebani response time
     fetch(`${req.nextUrl.origin}/api/internal/telegram-alert`, {
       method: 'POST',
-      headers: { 
+      headers: {
         'Content-Type': 'application/json',
-        'x-internal-secret': process.env.INTERNAL_ALERT_SECRET || 'internal_secret',
+        'x-internal-secret':
+          process.env.INTERNAL_ALERT_SECRET || 'internal_secret',
       },
       body: JSON.stringify(alertData),
     }).catch((err) => console.error('Failed to trigger alert API:', err));
 
-    // Return 403 Forbidden dengan JSON error
     return NextResponse.json(
-      { success: false, error: 'Access Denied: Request blocked by Benangku Security WAF.' },
+      {
+        success: false,
+        error: 'Access Denied: Request blocked by Benangku WAF Security.',
+      },
       { status: 403 }
     );
   }
@@ -136,15 +152,8 @@ export async function middleware(req: NextRequest) {
   return NextResponse.next();
 }
 
-// Konfigurasi Matcher agar Middleware hanya mengecek endpoint penting
 export const config = {
   matcher: [
-    /*
-     * Match semua request kecuali:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico, images, fonts
-     */
     '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };
