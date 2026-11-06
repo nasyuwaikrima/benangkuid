@@ -7,6 +7,7 @@ import Sidebar from "@/components/dashboard/Sidebar";
 import Topbar from "@/components/dashboard/Topbar";
 import BottomNav from "@/components/dashboard/BottomNav";
 import { checkShopAccess } from '@/lib/subscription';
+import { getNotifications } from '@/lib/notifications';
 
 export const instant = false;
 
@@ -27,7 +28,7 @@ export default async function DashboardLayout({
   }
 
   // 2. Query Data Toko & Jumlah Pelanggan Saat Ini
-  const [{ data: shop }, { count: customerCount }] = await Promise.all([
+  const [{ data: shop }, { count: customerCount }, notifications] = await Promise.all([
     supabase
       .from('shops')
       .select('*')
@@ -37,6 +38,7 @@ export default async function DashboardLayout({
       .from('customers')
       .select('*', { count: 'exact', head: true })
       .eq('shop_id', user.id),
+    getNotifications(supabase, user.created_at),
   ]);
 
   // 3. LOCK TOTAL: Jika Belum Onboarding
@@ -58,6 +60,8 @@ export default async function DashboardLayout({
         <Topbar 
           ownerName={shop?.owner_name || user.user_metadata?.full_name || 'Penjahit'} 
           shopName={shop?.shop_name || 'Toko Saya'} 
+          shopId={user.id}
+          initialNotifications={notifications}
         />
         <main className="flex-1 p-4 md:p-6 overflow-y-auto">
           <PaywallBanner access={access} />

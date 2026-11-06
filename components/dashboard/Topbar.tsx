@@ -6,7 +6,6 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   Search,
-  Bell,
   Calendar,
   Plus,
   User,
@@ -19,16 +18,27 @@ import {
   FileText,
   LogOut,
 } from "lucide-react";
+import NotificationBell from "@/components/dashboard/notifications/NotificationBell";
+import { useNotifications } from "@/components/dashboard/notifications/useNotifications";
+import type { NotificationItem } from "@/types/database";
 
 interface TopbarProps {
   ownerName?: string;
   shopName?: string;
+  shopId?: string;
+  initialNotifications?: NotificationItem[];
 }
 
 export default function Topbar({
   ownerName = "Penjahit",
   shopName = "Toko Saya",
+  shopId,
+  initialNotifications = [],
 }: TopbarProps) {
+  const { items, unreadCount, markRead, markAllRead } = useNotifications(
+    shopId,
+    initialNotifications
+  );
   const [formattedDate, setFormattedDate] = useState<string>("");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const pathname = usePathname();
@@ -84,10 +94,13 @@ export default function Topbar({
           </div>
 
           {/* Notifikasi Lonceng */}
-          <button className="relative p-2 rounded-xl bg-[#0F172A] border border-slate-800/80 text-slate-400 hover:text-white transition">
-            <Bell className="w-4 h-4" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-blue-500 rounded-full ring-2 ring-[#161F30]" />
-          </button>
+          <NotificationBell
+            variant="desktop"
+            items={items}
+            unreadCount={unreadCount}
+            onMarkRead={markRead}
+            onMarkAllRead={markAllRead}
+          />
 
           {/* Profil Toko / Penjahit */}
           <Link
@@ -136,10 +149,13 @@ export default function Topbar({
         {/* Akses Cepat Kanan Mobile */}
         <div className="flex items-center gap-2">
           {/* Lonceng Notifikasi */}
-          <button className="relative p-2 rounded-xl bg-[#0F172A] border border-slate-800 text-slate-400 hover:text-white transition">
-            <Bell className="w-4 h-4" />
-            <span className="absolute top-1 right-1 w-2 h-2 bg-blue-500 rounded-full ring-2 ring-[#161F30]" />
-          </button>
+          <NotificationBell
+            variant="mobile"
+            items={items}
+            unreadCount={unreadCount}
+            onMarkRead={markRead}
+            onMarkAllRead={markAllRead}
+          />
 
           {/* Profil Avatar Direct Link */}
           <Link
