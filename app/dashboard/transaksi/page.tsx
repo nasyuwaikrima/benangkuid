@@ -3,7 +3,17 @@ import { redirect } from 'next/navigation';
 import { connection } from 'next/server';
 import Link from 'next/link';
 import PaymentStatusChecker from '@/components/PaymentStatusChecker';
-import { Subscription } from '@/types/database'; // Pastikan path sesuai
+import QrisCardClient from '@/components/payment/QrisCardClient';
+import { Subscription } from '@/types/database';
+import {
+  ArrowLeft,
+  Clock,
+  CheckCircle2,
+  XCircle,
+  Receipt,
+  Sparkles,
+  CreditCard,
+} from 'lucide-react';
 
 export const instant = false;
 
@@ -15,7 +25,9 @@ export default async function TransaksiPage({ searchParams }: PageProps) {
   await connection();
 
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   if (!user) {
     redirect('/login');
@@ -32,29 +44,32 @@ export default async function TransaksiPage({ searchParams }: PageProps) {
     }).format(amount);
   };
 
-  const getStatusBadge = (status: Subscription['status']) => {
+  const getStatusBadge = (status: string) => {
     switch (status.toLowerCase()) {
       case 'paid':
         return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
-            Berhasil
+          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            <CheckCircle2 className="w-3.5 h-3.5" />
+            <span>Berhasil</span>
           </span>
         );
       case 'pending':
         return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">
-            Menunggu Pembayaran
+          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+            <Clock className="w-3.5 h-3.5" />
+            <span>Menunggu Pembayaran</span>
           </span>
         );
       case 'expired':
         return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-800">
-            Kadaluarsa
+          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20">
+            <XCircle className="w-3.5 h-3.5" />
+            <span>Kadaluarsa</span>
           </span>
         );
       default:
         return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-800">
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-slate-800 text-slate-300">
             {status}
           </span>
         );
@@ -62,7 +77,7 @@ export default async function TransaksiPage({ searchParams }: PageProps) {
   };
 
   // =======================================================
-  // MODE 1: TAMPILKAN DETAIL TAGIHAN / QRIS (?id=INVOICE_ID)
+  // MODE 1: DETAIL TAGIHAN & QRIS PEMBAYARAN (?id=INVOICE_ID)
   // =======================================================
   if (invoiceId) {
     const { data: rawTransaction } = await supabase
@@ -76,100 +91,116 @@ export default async function TransaksiPage({ searchParams }: PageProps) {
 
     if (!transaction) {
       return (
-        <div className="p-6 max-w-md mx-auto text-center py-12">
-          <p className="text-slate-600 font-medium">Transaksi tidak ditemukan.</p>
+        <div className="p-6 max-w-md mx-auto text-center py-16 space-y-4">
+          <div className="w-12 h-12 rounded-2xl bg-slate-800 text-slate-400 flex items-center justify-center mx-auto">
+            <Receipt className="w-6 h-6" />
+          </div>
+          <h2 className="text-lg font-bold text-white">Transaksi Tidak Ditemukan</h2>
+          <p className="text-xs text-slate-400">
+            Tagihan dengan ID tersebut tidak tersedia atau telah dihapus.
+          </p>
           <Link
             href="/dashboard/transaksi"
-            className="mt-4 inline-block text-sm text-blue-600 hover:underline font-medium"
+            className="inline-flex items-center gap-2 text-xs font-semibold text-blue-400 hover:text-blue-300 transition pt-2"
           >
-            &larr; Kembali ke Riwayat Transaksi
+            <ArrowLeft className="w-4 h-4" />
+            <span>Kembali ke Riwayat Transaksi</span>
           </Link>
         </div>
       );
     }
 
-    // Cek apakah waktu expired_at sudah lewat
     const isTimeExpired = transaction.expired_at ? new Date(transaction.expired_at) < new Date() : false;
     const isPending = transaction.status.toLowerCase() === 'pending' && !isTimeExpired;
     const isPaid = transaction.status.toLowerCase() === 'paid';
     const isExpired = transaction.status.toLowerCase() === 'expired' || isTimeExpired;
 
     return (
-      <div className="p-6 max-w-lg mx-auto">
+      <div className="max-w-xl mx-auto space-y-6 pb-12 select-none animate-in fade-in duration-200">
         <PaymentStatusChecker invoiceId={transaction.invoice_id} status={transaction.status} />
 
         <Link
           href="/dashboard/transaksi"
-          className="text-xs text-slate-500 hover:text-slate-800 mb-4 inline-block font-medium"
+          className="inline-flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-white transition"
         >
-          &larr; Kembali ke semua transaksi
+          <ArrowLeft className="w-4 h-4" />
+          <span>Semua Riwayat Transaksi</span>
         </Link>
 
-        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm text-center">
-          <div className="flex justify-between items-center mb-4 pb-4 border-b border-slate-100">
-            <span className="text-xs font-mono text-slate-500">#{transaction.invoice_id}</span>
+        <div className="bg-[#161F30] border border-slate-800 rounded-3xl p-6 md:p-8 space-y-6 shadow-2xl relative overflow-hidden">
+          <div className="absolute -top-16 -right-16 w-48 h-48 bg-blue-600/15 rounded-full blur-3xl pointer-events-none" />
+
+          {/* Header Tagihan */}
+          <div className="flex items-center justify-between border-b border-slate-800/80 pb-5">
+            <div>
+              <span className="text-[11px] font-bold text-blue-400 uppercase tracking-wider block mb-1">
+                Detail Transaksi
+              </span>
+              <h1 className="text-xl font-bold text-white capitalize">
+                Paket {transaction.plan}
+              </h1>
+            </div>
             {getStatusBadge(isExpired ? 'expired' : transaction.status)}
           </div>
 
-          <h2 className="text-lg font-bold text-slate-900 mb-1 capitalize">
-            Pembayaran Paket {transaction.plan}
-          </h2>
-          <p className="text-3xl font-extrabold text-blue-600 my-3">
-            {formatRupiah(transaction.amount)}
-          </p>
-
-          {isPending && transaction.qris_image ? (
-            <div className="my-6 flex flex-col items-center">
-              <div className="p-3 bg-white border border-slate-200 rounded-xl shadow-inner">
-                <img
-                  src={transaction.qris_image}
-                  alt="QRIS Pembayaran"
-                  className="w-64 h-64 object-contain mx-auto"
-                />
-              </div>
-              <p className="text-xs text-slate-500 mt-3">
-                Scan kode QRIS di atas menggunakan m-Banking atau e-Wallet (Gopay, OVO, ShopeePay, Dana, dll).
-              </p>
-              {transaction.expired_at && (
-                <p className="text-xs text-amber-600 font-medium mt-1">
-                  Batas Pembayaran: {new Date(transaction.expired_at).toLocaleString('id-ID')}
-                </p>
-              )}
+          {/* Informasi Harga & Batas Waktu */}
+          <div className="bg-[#0F172A] border border-slate-800 rounded-2xl p-5 space-y-2 text-center">
+            <span className="text-xs text-slate-400 font-medium">Total Pembayaran</span>
+            <div className="text-3xl font-extrabold text-white tracking-tight">
+              {formatRupiah(transaction.amount)}
             </div>
+
+            {isPending && transaction.expired_at && (
+              <div className="pt-2 flex items-center justify-center gap-1.5 text-xs text-amber-400 font-semibold">
+                <Clock className="w-3.5 h-3.5" />
+                <span>Batas Pembayaran: {new Date(transaction.expired_at).toLocaleString('id-ID')}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Konten Berdasarkan Status Pembayaran */}
+          {isPending && transaction.qris_image ? (
+            <QrisCardClient
+              transaction={transaction}
+              formattedAmount={formatRupiah(transaction.amount)}
+            />
           ) : isPaid ? (
-            <div className="my-8 py-6 bg-emerald-50 rounded-xl border border-emerald-100">
-              <p className="text-emerald-800 font-semibold text-sm">
-                Pembayaran telah berhasil diterima!
-              </p>
-              <p className="text-xs text-emerald-600 mt-1">
-                Lisensi akun kamu sudah otomatis aktif.
+            <div className="my-6 p-6 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl text-center space-y-2">
+              <div className="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto mb-2">
+                <CheckCircle2 className="w-6 h-6" />
+              </div>
+              <h3 className="text-base font-bold text-white">Pembayaran Berhasil!</h3>
+              <p className="text-xs text-slate-300">
+                Terima kasih, lisensi akun toko Anda telah otomatis diperbarui dan aktif.
               </p>
             </div>
           ) : (
-            <div className="my-8 py-6 bg-slate-50 rounded-xl border border-slate-200">
-              <p className="text-slate-700 font-semibold text-sm">
-                Tagihan Pembayaran Kadaluarsa
-              </p>
-              <p className="text-xs text-slate-500 mt-1">
-                Kode QRIS sudah tidak berlaku. Silakan buat tagihan baru melalui halaman upgrade.
+            <div className="my-6 p-6 bg-rose-500/10 border border-rose-500/30 rounded-2xl text-center space-y-2">
+              <div className="w-12 h-12 rounded-full bg-rose-500/20 text-rose-400 flex items-center justify-center mx-auto mb-2">
+                <XCircle className="w-6 h-6" />
+              </div>
+              <h3 className="text-base font-bold text-white">Tagihan Kadaluarsa</h3>
+              <p className="text-xs text-slate-300">
+                Waktu pembayaran telah habis. Kode QRIS sudah tidak dapat digunakan.
               </p>
             </div>
           )}
 
-          <div className="pt-4 border-t border-slate-100 flex gap-3">
+          {/* Action Footer */}
+          <div className="pt-4 border-t border-slate-800/80 flex flex-col md:flex-row gap-3">
             {isExpired && (
               <Link
                 href="/dashboard/upgrade"
-                className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 rounded-xl text-sm font-semibold text-white transition"
+                className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl text-center shadow-lg transition"
               >
                 Buat Tagihan Baru
               </Link>
             )}
             <Link
               href="/dashboard/transaksi"
-              className="w-full py-2.5 px-4 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
+              className="w-full py-3 px-4 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs rounded-xl text-center border border-slate-700/80 transition"
             >
-              Lihat Riwayat
+              Lihat Riwayat Transaksi
             </Link>
           </div>
         </div>
@@ -178,7 +209,7 @@ export default async function TransaksiPage({ searchParams }: PageProps) {
   }
 
   // =======================================================
-  // MODE 2: TAMPILKAN DAFTAR RIWAYAT TRANSAKSI (Tabel)
+  // MODE 2: TABEL RIWAYAT TRANSAKSI (DARK THEME UI)
   // =======================================================
   const { data: rawTransactions } = await supabase
     .from('subscriptions')
@@ -189,57 +220,70 @@ export default async function TransaksiPage({ searchParams }: PageProps) {
   const transactions = (rawTransactions || []) as Subscription[];
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
-      <div className="flex justify-between items-center mb-6">
+    <div className="max-w-5xl mx-auto space-y-6 pb-16 select-none">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Riwayat Transaksi</h1>
-          <p className="text-sm text-slate-500">
-            Daftar tagihan dan status pembayaran langganan aplikasi kamu.
+          <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-blue-500/10 text-blue-400 border border-blue-500/20 mb-2">
+            <CreditCard className="w-3.5 h-3.5" />
+            <span>Tagihan & Pembayaran</span>
+          </span>
+          <h1 className="text-2xl font-extrabold text-white tracking-tight">Riwayat Transaksi</h1>
+          <p className="text-xs text-slate-400 mt-0.5">
+            Daftar seluruh tagihan langganan usaha jahit Anda.
           </p>
         </div>
         <Link
           href="/dashboard/upgrade"
-          className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2 rounded-lg transition"
+          className="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-4 py-3 rounded-xl transition shadow-lg shadow-blue-600/20"
         >
-          Upgrade Paket
+          <Sparkles className="w-4 h-4" />
+          <span>Upgrade Paket</span>
         </Link>
       </div>
 
+      {/* Tabel Data */}
       {transactions.length === 0 ? (
-        <div className="bg-white border border-slate-200 rounded-xl p-8 text-center">
-          <p className="text-slate-500 text-sm">Belum ada riwayat transaksi.</p>
+        <div className="bg-[#161F30] border border-slate-800 rounded-3xl p-12 text-center space-y-3">
+          <div className="w-12 h-12 rounded-2xl bg-slate-800 text-slate-500 flex items-center justify-center mx-auto">
+            <Receipt className="w-6 h-6" />
+          </div>
+          <p className="text-sm font-semibold text-slate-300">Belum Ada Transaksi</p>
+          <p className="text-xs text-slate-500 max-w-sm mx-auto">
+            Anda belum pernah membuat tagihan langganan. Upgrade akun Anda untuk mendapatkan fitur Pro.
+          </p>
         </div>
       ) : (
-        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+        <div className="bg-[#161F30] border border-slate-800 rounded-3xl overflow-hidden shadow-xl">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm text-slate-600">
-              <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200">
+            <table className="w-full text-left text-xs text-slate-300">
+              <thead className="bg-[#0F172A] text-slate-400 font-bold border-b border-slate-800 uppercase tracking-wider">
                 <tr>
-                  <th className="px-6 py-3">ID Invoice</th>
-                  <th className="px-6 py-3">Paket</th>
-                  <th className="px-6 py-3">Total</th>
-                  <th className="px-6 py-3">Tanggal</th>
-                  <th className="px-6 py-3">Status</th>
-                  <th className="px-6 py-3 text-right">Aksi</th>
+                  <th className="px-6 py-4">ID Invoice</th>
+                  <th className="px-6 py-4">Paket</th>
+                  <th className="px-6 py-4">Total</th>
+                  <th className="px-6 py-4">Tanggal</th>
+                  <th className="px-6 py-4">Status</th>
+                  <th className="px-6 py-4 text-right">Aksi</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-slate-800/80">
                 {transactions.map((item) => {
                   const isTimeExpired = item.expired_at ? new Date(item.expired_at) < new Date() : false;
-                  const displayStatus = (item.status.toLowerCase() === 'pending' && isTimeExpired) ? 'expired' : item.status;
+                  const displayStatus = item.status.toLowerCase() === 'pending' && isTimeExpired ? 'expired' : item.status;
 
                   return (
-                    <tr key={item.id} className="hover:bg-slate-50/50 transition">
-                      <td className="px-6 py-4 font-mono text-xs font-semibold text-slate-800">
+                    <tr key={item.id} className="hover:bg-slate-800/30 transition">
+                      <td className="px-6 py-4 font-mono font-semibold text-slate-200">
                         #{item.invoice_id}
                       </td>
-                      <td className="px-6 py-4 font-medium text-slate-900 capitalize">
+                      <td className="px-6 py-4 font-bold text-white capitalize">
                         {item.plan}
                       </td>
-                      <td className="px-6 py-4 font-semibold text-slate-900">
+                      <td className="px-6 py-4 font-bold text-blue-400">
                         {formatRupiah(item.amount)}
                       </td>
-                      <td className="px-6 py-4 text-xs text-slate-500">
+                      <td className="px-6 py-4 text-slate-400">
                         {new Date(item.created_at).toLocaleDateString('id-ID', {
                           day: 'numeric',
                           month: 'short',
@@ -253,14 +297,15 @@ export default async function TransaksiPage({ searchParams }: PageProps) {
                         {displayStatus.toLowerCase() === 'pending' ? (
                           <Link
                             href={`/dashboard/transaksi?id=${item.invoice_id}`}
-                            className="text-xs text-blue-600 hover:text-blue-800 font-semibold hover:underline"
+                            className="inline-flex items-center gap-1 font-bold text-blue-400 hover:text-blue-300 transition"
                           >
-                            Bayar Sekarang &rarr;
+                            <span>Bayar Sekarang</span>
+                            <span>&rarr;</span>
                           </Link>
                         ) : (
                           <Link
                             href={`/dashboard/transaksi?id=${item.invoice_id}`}
-                            className="text-xs text-slate-500 hover:text-slate-800 hover:underline"
+                            className="font-medium text-slate-400 hover:text-white transition"
                           >
                             Detail
                           </Link>
