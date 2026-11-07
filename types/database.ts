@@ -5,7 +5,7 @@ export interface Shop {
   shop_name: string | null;
   whatsapp_number: string | null;
   is_onboarded: boolean;
-  subscription_status: 'trialing' | 'paid' | 'pending' | 'expired';
+  subscription_status: 'trialing' | 'trial' | 'active' | 'paid' | 'success' | 'pending' | 'expired';
   trial_ends_at: string;
   pro_valid_until: string | null;
   created_at: string;
