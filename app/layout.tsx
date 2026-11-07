@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
   display: "swap",
 });
 
-const siteUrl = SITE.url;
+const siteUrl = SITE.url || "https://benangku.id";
 const ogImageUrl = `${siteUrl}/og-image.png`;
 
 export const viewport: Viewport = {
@@ -41,7 +41,7 @@ export const metadata: Metadata = {
     "benangku",
     "benangku id",
   ],
-  authors: [{ name: SITE.operator, url: siteUrl }],
+  authors: [{ name: String(SITE.operator), url: siteUrl }],
   creator: "Benangku",
   publisher: "Benangku",
   formatDetection: {
@@ -77,7 +77,6 @@ export const metadata: Metadata = {
     title: "Benangku - Aplikasi Catatan Order Penjahit & Konveksi",
     description:
       "Kelola antrean jahit & ukuran badan pelanggan dengan mudah. Kirim update status via WA otomatis.",
-    creator: "@benangku",
     images: [ogImageUrl],
   },
   robots: {
@@ -102,9 +101,9 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
     <html
       lang="id"
