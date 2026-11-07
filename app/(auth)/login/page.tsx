@@ -6,6 +6,8 @@ import Link from 'next/link';
 import SiteFooter from '@/components/SiteFooter';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 
+export const dynamic = 'force-dynamic';
+
 function AuthErrorAlert({ onError }: { onError: (msg: string) => void }) {
   const params = useSearchParams();
   const router = useRouter();
@@ -27,6 +29,7 @@ function AuthErrorAlert({ onError }: { onError: (msg: string) => void }) {
 
 // Teruskan tujuan setelah login (?next=/dashboard/upgrade) — hanya path internal
 function nextQuery(): string {
+  if (typeof window === 'undefined') return '';
   const next = new URLSearchParams(window.location.search).get('next');
   return next && next.startsWith('/') && !next.startsWith('//') ? `?next=${encodeURIComponent(next)}` : '';
 }
@@ -35,7 +38,6 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [currentYear, setCurrentYear] = useState<number | string>('');
-  const supabase = createClient();
 
   // Set tahun hanya di sisi client (browser) untuk menghindari prerender error
   useEffect(() => {
@@ -45,6 +47,9 @@ export default function LoginPage() {
   const handleGoogleLogin = async () => {
     setLoading(true);
     setErrorMessage(null);
+
+    // Inisialisasi Supabase Client di dalam handler (Client-side execution)
+    const supabase = createClient();
 
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
