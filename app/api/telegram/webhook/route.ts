@@ -3,6 +3,23 @@ import { checkRateLimit } from '@/lib/rate-limit';
 import { isTelegramAdmin, safeEqual, sendTelegramMessage } from '@/lib/telegram/api';
 import { handleCommand, HELP_TEXT } from '@/lib/telegram/commands';
 
+type TelegramUpdate = {
+  update_id?: number;
+  message?: {
+    text?: string;
+    from?: { id: number };
+    chat: { id: number; type: string };
+  };
+};
+
+// Telegram bisa mengirim ulang update yang sama bila respons lambat → abaikan duplikat
+const seen = new Set<number>();
+const remember = (id: number) => {
+  seen.add(id);
+  if (seen.size > 500) seen.delete(seen.values().next().value as number);
+};
+
+// Selalu balas 200 agar Telegram tidak mengulang update yang sama
 const ok = () => NextResponse.json({ ok: true });
 
 export async function POST(req: Request) {
@@ -13,21 +30,19 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  let update: {
-    message?: {
-      text?: string;
-      from?: { id: number };
-      chat: { id: number; type: string };
-    };
-  };
+  let update: TelegramUpdate;
   try {
     update = await req.json();
   } catch {
     return NextResponse.json({ error: 'Bad Request' }, { status: 400 });
   }
 
+  if (typeof update.update_id === 'number') {
+    if (seen.has(update.update_id)) return ok();
+    remember(update.update_id);
+  }
+
   const message = update.message;
-  // Selalu balas 200 agar Telegram tidak mengulang update yang sama
   if (!message?.text || !message.from || message.chat.type !== 'private') return ok();
 
   const chatId = message.chat.id;
