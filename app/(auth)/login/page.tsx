@@ -2,6 +2,8 @@
 
 import { createClient } from '@/lib/supabase/client';
 import { Suspense, useEffect, useState } from 'react';
+import Link from 'next/link';
+import SiteFooter from '@/components/SiteFooter';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 
 function AuthErrorAlert({ onError }: { onError: (msg: string) => void }) {
@@ -23,6 +25,12 @@ function AuthErrorAlert({ onError }: { onError: (msg: string) => void }) {
   return null;
 }
 
+// Teruskan tujuan setelah login (?next=/dashboard/upgrade) — hanya path internal
+function nextQuery(): string {
+  const next = new URLSearchParams(window.location.search).get('next');
+  return next && next.startsWith('/') && !next.startsWith('//') ? `?next=${encodeURIComponent(next)}` : '';
+}
+
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -41,7 +49,7 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: `${window.location.origin}/auth/callback${nextQuery()}`,
       },
     });
 
@@ -172,8 +180,12 @@ export default function LoginPage() {
             </button>
 
             <p className="text-center text-xs text-slate-500 leading-relaxed">
-              Dengan masuk, Anda menyetujui Syarat dan Ketentuan Layanan benangku.id.
+              Dengan masuk, kamu menyetujui{' '}
+              <Link href="/terms" className="text-slate-300 underline-offset-2 hover:underline">Syarat & Ketentuan</Link>{' '}
+              dan{' '}
+              <Link href="/privasi" className="text-slate-300 underline-offset-2 hover:underline">Kebijakan Privasi</Link>.
             </p>
+            <SiteFooter className="!px-0" />
           </div>
         </div>
       </div>

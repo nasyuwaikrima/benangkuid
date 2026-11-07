@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { SITE } from "@/config/site";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -14,19 +15,18 @@ const geistMono = Geist_Mono({
   display: "swap",
 });
 
-const siteUrl = process.env.NEXT_PUBLIC_APP_URL || "https://benangku.web.id";
+const siteUrl = SITE.url;
 
 export const viewport: Viewport = {
   themeColor: "#0f172a", // Warna header browser mobile (Slate-900)
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
 };
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "Benangku - Aplikasi Manajemen Usaha Penjahit & Rumahan",
+    default: "Benangku - Aplikasi Catatan Order Penjahit & Konveksi",
     template: "%s | Benangku",
   },
   description:
@@ -40,7 +40,7 @@ export const metadata: Metadata = {
     "benangku",
     "benangku id",
   ],
-  authors: [{ name: "Benangku Team", url: siteUrl }],
+  authors: [{ name: SITE.operator, url: siteUrl }],
   creator: "Benangku",
   publisher: "Benangku",
   formatDetection: {
@@ -48,32 +48,24 @@ export const metadata: Metadata = {
     address: false,
     telephone: false,
   },
+  applicationName: "Benangku",
   alternates: {
-    canonical: "./",
+    canonical: "/",
   },
   openGraph: {
-    title: "Benangku - Aplikasi Manajemen Usaha Penjahit & Rumahan",
+    title: "Benangku - Aplikasi Catatan Order Penjahit & Konveksi",
     description:
       "Kelola antrean jahit, simpan ukuran pelanggan, dan kirim nota otomatis via WhatsApp dalam satu platform praktis.",
     url: siteUrl,
     siteName: "Benangku",
     locale: "id_ID",
     type: "website",
-    images: [
-      {
-        url: "/og-image.png", // Pastikan taruh file og-image (1200x630px) di folder /public
-        width: 1200,
-        height: 630,
-        alt: "Benangku Platform Preview",
-      },
-    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "Benangku - Aplikasi Manajemen Usaha Penjahit",
     description:
       "Kelola antrean jahit & ukuran badan pelanggan dengan mudah. Kirim update status via WA otomatis.",
-    images: ["/og-image.png"],
   },
   robots: {
     index: true,
@@ -91,7 +83,6 @@ export const metadata: Metadata = {
       { url: "/favicon.ico" },
       { url: "/logo.svg", type: "image/svg+xml" },
     ],
-    apple: "/apple-touch-icon.png",
   },
 };
 

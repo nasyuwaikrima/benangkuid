@@ -1,3 +1,8 @@
+import { getPlan, formatRupiah } from "@/config/pricing";
+import { SITE } from "@/config/site";
+
+const PRO = getPlan("pro")!;
+
 export interface TermSection {
   id: string;
   title: string;
@@ -27,8 +32,9 @@ export const TERMS_AND_CONDITIONS: TermSection[] = [
     title: "3. Ketentuan Langganan & Pembayaran",
     content: [
       "Setiap pendaftaran baru berhak mendapatkan masa percobaan (trial) gratis selama 14 hari.",
-      "Setelah masa trial berakhir, Pengguna wajib memperpanjang lisensi berlangganan seharga Rp 20.000/bulan untuk mempertahankan akses full dashboard.",
-      "Biaya langganan yang sudah dibayarkan bersifat non-refundable (tidak dapat dikembalikan).",
+      `Setelah masa trial berakhir, Pengguna perlu berlangganan paket Pro seharga ${formatRupiah(PRO.priceAmount)}/${PRO.durationDays} hari untuk menambah pelanggan dan pesanan baru. Harga dapat berubah dengan pemberitahuan di dalam aplikasi.`,
+      "Biaya langganan yang sudah dibayarkan bersifat non-refundable (tidak dapat dikembalikan), kecuali terjadi kesalahan penagihan atau gangguan layanan berkepanjangan dari pihak kami.",
+      "Pembayaran diproses melalui QRIS dan paket aktif otomatis setelah pembayaran terkonfirmasi.",
     ],
   },
   {
@@ -36,7 +42,7 @@ export const TERMS_AND_CONDITIONS: TermSection[] = [
     title: "4. Kepemilikan & Keamanan Data Pelanggan",
     content: [
       "Data nama pelanggan, nomor WhatsApp, dan variabel ukuran badan yang diinput sepenuhnya merupakan milik Pengguna.",
-      "benangku.id berkomitmen menjaga kerahasiaan data tersebut dan tidak akan menjual atau menyalahgunakan data pelanggan Pengguna kepada pihak ketiga.",
+      "benangku.id berkomitmen menjaga kerahasiaan data tersebut dan tidak akan menjual atau menyalahgunakan data pelanggan Pengguna kepada pihak ketiga. Rincian pengelolaan data ada di Kebijakan Privasi (/privasi).",
     ],
   },
   {
@@ -53,5 +59,10 @@ export const TERMS_AND_CONDITIONS: TermSection[] = [
     content: [
       "benangku.id berhak memperbarui Syarat dan Ketentuan ini sewaktu-waktu. Syarat dan Ketentuan ini tunduk pada hukum yang berlaku di Republik Indonesia.",
     ],
+  },
+  {
+    id: "kontak",
+    title: "7. Kontak",
+    content: [`Pertanyaan seputar layanan dan ketentuan ini dapat dikirim ke ${SITE.email}.`],
   },
 ];

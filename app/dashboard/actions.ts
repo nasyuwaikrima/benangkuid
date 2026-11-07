@@ -1,11 +1,12 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
-import { onboardingSchema } from '@/lib/validations/shop';
+import { onboardingSchema, profileSchema } from '@/lib/validations/shop';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { checkShopAccess } from '@/lib/subscription';
 import { revalidatePath } from 'next/cache';
-import { sendNewShopAlertToTelegram } from '@/lib/telegram/AlertUserBaru';
+import { after } from 'next/server';
+import { sendNewShopAlert } from '@/lib/telegram/alerts';
 
 // 1. Action Onboarding Toko (Rate Limit + Zod Validation + Telegram Admin Alert)
 export async function submitOnboarding(formData: FormData) {
@@ -52,14 +53,16 @@ export async function submitOnboarding(formData: FormData) {
     return { success: false, error: 'Gagal memperbarui profil toko: ' + error.message };
   }
 
-  // Kirim Notifikasi Otomatis ke Telegram Admin secara Background (Non-blocking)
-  sendNewShopAlertToTelegram({
-    shopName: validation.data.shop_name,
-    whatsappNumber: validation.data.whatsapp_number,
-    ownerName: updatedShop?.owner_name || user.user_metadata?.full_name || 'Pemilik Toko',
-    ownerEmail: updatedShop?.email || user.email || '-',
-    userId: user.id,
-  }).catch((err) => console.error('[Telegram Onboarding Alert Failed]:', err));
+  // Alert admin dikirim setelah respons selesai (tidak memperlambat user, aman di serverless)
+  after(() =>
+    sendNewShopAlert({
+      shopName: validation.data.shop_name,
+      whatsappNumber: validation.data.whatsapp_number,
+      ownerName: updatedShop?.owner_name || user.user_metadata?.full_name || 'Pemilik Toko',
+      ownerEmail: updatedShop?.email || user.email || '-',
+      userId: user.id,
+    })
+  );
 
   revalidatePath('/dashboard');
   return { success: true };
@@ -117,4 +120,36 @@ export async function createCustomerAction(formData: FormData) {
 
   revalidatePath('/dashboard');
   return { success: true, data };
+}
+
+
+// 3. Action Ubah Profil Toko (halaman /dashboard/pengaturan)
+export async function updateShopProfile(formData: FormData) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: 'Sesi tidak valid, silakan login kembali.' };
+
+  if (!checkRateLimit(`profile:${user.id}`, 10, 60 * 1000)) {
+    return { success: false, error: 'Terlalu banyak percobaan. Coba lagi dalam 1 menit.' };
+  }
+
+  const validation = profileSchema.safeParse({
+    owner_name: formData.get('owner_name'),
+    shop_name: formData.get('shop_name'),
+    whatsapp_number: formData.get('whatsapp_number'),
+  });
+  if (!validation.success) {
+    return { success: false, error: validation.error.issues[0]?.message || 'Input tidak valid' };
+  }
+
+  const { error } = await supabase
+    .from('shops')
+    .update(validation.data)
+    .eq('id', user.id);
+  if (error) return { success: false, error: 'Gagal menyimpan perubahan. Coba lagi.' };
+
+  revalidatePath('/dashboard', 'layout');
+  return { success: true };
 }

@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { ArrowLeft, FileText, ShieldAlert, Scissors, Mail } from "lucide-react";
 import { TERMS_AND_CONDITIONS } from "@/config/terms";
+import { SITE, mailtoLink, waLink } from "@/config/site";
+import SiteFooter from "@/components/SiteFooter";
 
 export const metadata = {
   title: "Syarat & Ketentuan Layanan - benangku.id",
@@ -8,10 +10,11 @@ export const metadata = {
 };
 
 export default function TermsPage() {
-  const lastUpdated = "1 November 2026";
+  const lastUpdated = SITE.legalUpdated;
+  const wa = waLink("Halo benangku.id, saya ingin bertanya mengenai Syarat dan Ketentuan.");
 
   return (
-    <div className="min-h-screen bg-[#0B0F17] text-slate-100 font-sans antialiased selection:bg-blue-600 selection:text-white py-12 px-4 sm:px-6 lg:px-8 select-none">
+    <div className="min-h-screen bg-[#0B0F17] text-slate-100 font-sans antialiased selection:bg-blue-600 selection:text-white py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto space-y-8">
         
         {/* NAVIGATION BACK */}
@@ -83,25 +86,26 @@ export default function TermsPage() {
           ))}
         </div>
 
-        {/* FOOTER & SUPPORT CONTACT */}
-        <div className="bg-[#161F30] border border-slate-800 rounded-2xl p-5 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-slate-400">
+        {/* KONTAK */}
+        <div className="bg-[#161F30] border border-slate-800 rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400">
           <div className="flex items-center gap-2">
             <Scissors className="w-4 h-4 text-blue-400" />
-            <span>&copy; 2026 benangku.id — Mitra Penjahit UMKM</span>
+            <span>Ada pertanyaan seputar ketentuan ini?</span>
           </div>
-
-          <a
-            href="https://wa.me/6281234567890?text=Halo%20Admin%20benangku.id,%20saya%20ingin%20bertanya%20mengenai%20Syarat%20dan%20Ketentuan"
-            target="_blank"
-            rel="noreferrer"
-            className="flex items-center gap-1.5 text-blue-400 hover:text-blue-300 font-semibold"
-          >
-            <Mail className="w-4 h-4" />
-            <span>Pertanyaan Pertanyaan seputar ToS? Hubungi CS</span>
-          </a>
+          <div className="flex items-center gap-4 font-semibold">
+            <a href={mailtoLink("Pertanyaan Syarat & Ketentuan")} className="flex items-center gap-1.5 text-blue-400 hover:text-blue-300">
+              <Mail className="w-4 h-4" /> {SITE.email}
+            </a>
+            {wa && (
+              <a href={wa} target="_blank" rel="noopener noreferrer" className="text-emerald-400 hover:text-emerald-300">
+                WhatsApp
+              </a>
+            )}
+          </div>
         </div>
 
       </div>
+      <SiteFooter className="mt-6" />
     </div>
   );
 }
