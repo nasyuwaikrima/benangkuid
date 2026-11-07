@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Scissors, Plus, History, User } from "lucide-react";
+import { Home, Scissors, Plus, Receipt, User } from "lucide-react";
 
 const mobileItems = [
   { name: "Beranda", href: "/dashboard", icon: Home },
   { name: "Antrean", href: "/dashboard/antrean", icon: Scissors },
   { name: "Tambah", href: "/dashboard/tambah", icon: Plus, isAction: true },
-  { name: "Riwayat", href: "/dashboard/riwayat", icon: History },
+  { name: "Tagihan", href: "/dashboard/transaksi", icon: Receipt },
   { name: "Profil", href: "/dashboard/profile", icon: User },
 ];
 

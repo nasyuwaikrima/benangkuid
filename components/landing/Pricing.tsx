@@ -7,20 +7,20 @@ import { PRICING_PLANS, formatRupiah } from "@/config/pricing";
 
 export default function Pricing() {
   return (
-    <section id="harga" className="px-4 sm:px-6 max-w-5xl mx-auto">
-      <div className="text-center mb-16">
+    <section id="harga" className="px-4 sm:px-6 py-16 md:py-24 max-w-5xl mx-auto">
+      <div className="text-center mb-14">
         <h2 className="text-2xl sm:text-4xl font-extrabold text-white">
           Harga Terjangkau Untuk Hasil Maksimal
         </h2>
-        <p className="mt-2 text-slate-400 text-xs sm:text-sm">
-          Coba gratis 14 hari atau langsung pilih paket berlangganan tanpa biaya tersembunyi!
+        <p className="mt-2 text-slate-400 text-sm">
+          Coba gratis dulu, atau langsung berlangganan. Bayar lewat QRIS tanpa biaya tersembunyi.
         </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch justify-center max-w-4xl mx-auto">
         {PRICING_PLANS.map((plan) => {
           const isPopular = plan.isPopular;
-          const targetHref = plan.id === "trial" ? "/login" : "/dashboard/upgrade";
+          const targetHref = plan.id === "trial" ? "/login" : "/login?next=/dashboard/upgrade";
 
           return (
             <motion.div

@@ -4,6 +4,9 @@ import {
   Wallet,
   Send,
   Smartphone,
+  BarChart3,
+  BellRing,
+  ShieldCheck,
   type LucideIcon,
 } from "lucide-react";
 
@@ -56,6 +59,24 @@ const features: Feature[] = [
     icon: Smartphone,
     title: "Buka dari Mana Saja",
     desc: "Pakai lewat HP Android, iPhone, laptop, atau tablet. Tidak perlu unduh dari Play Store.",
+    span: "lg:col-span-2",
+  },
+  {
+    icon: BarChart3,
+    title: "Ringkasan Omzet & Deadline",
+    desc: "Dashboard menampilkan pesanan masuk, pemasukan, dan jahitan yang mendekati deadline dalam satu layar.",
+    span: "lg:col-span-2",
+  },
+  {
+    icon: BellRing,
+    title: "Pengingat & Pemberitahuan",
+    desc: "Dapat pengingat masa aktif langganan dan kabar penting dari kami langsung di dalam aplikasi.",
+    span: "lg:col-span-2",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Data Privat & Aman",
+    desc: "Data pelangganmu hanya bisa dibuka oleh akun tokomu dan tidak pernah kami jual ke pihak lain.",
     span: "lg:col-span-2",
   },
 ];

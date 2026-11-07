@@ -12,12 +12,16 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { getPlan, formatRupiah } from "@/config/pricing";
 
 const FITUR = [
   { icon: Ruler, text: "Ukuran pelanggan tersimpan aman" },
   { icon: ListChecks, text: "Pantau antrean dan status jahitan" },
   { icon: Wallet, text: "Catat deadline, DP, dan pelunasan" },
 ];
+
+const PRO = getPlan("pro")!;
+const TRIAL = getPlan("trial")!;
 
 const TAHAP = ["Order masuk", "Potong", "Jahit", "Siap ambil"];
 const TAHAP_AKTIF = 2; // index "Jahit"
@@ -44,10 +48,10 @@ export default function Hero() {
 
   // Tentukan Link & Label CTA berdasarkan status login
   const targetLink = isLoggedIn ? "/dashboard" : "/login";
-  const ctaLabel = isLoggedIn ? "Buka Dashboard" : "Coba Gratis 14 Hari Sekarang";
+  const ctaLabel = isLoggedIn ? "Buka Dashboard" : `Coba Gratis ${TRIAL.durationDays} Hari`;
 
   return (
-    <section className="pt-38 md:pt-32 pb-12 px-4 sm:px-6 max-w-5xl mx-auto relative select-none">
+    <section className="pt-36 md:pt-36 pb-12 px-4 sm:px-6 max-w-5xl mx-auto relative">
       <div className="absolute top-1/2 right-0 w-80 h-80 bg-blue-600/15 rounded-full blur-[110px] pointer-events-none" />
 
       <div className="relative grid md:grid-cols-[1.05fr_0.95fr] gap-10 md:gap-12 items-center">
@@ -104,15 +108,15 @@ export default function Hero() {
               ) : (
                 <Sparkles className="w-[18px] h-[18px]" />
               )}
-              <span>{loading ? "Memuat..." : ctaLabel}</span>
+              <span>{loading ? "Coba Gratis" : ctaLabel}</span>
               <ArrowRight className="w-[18px] h-[18px] group-hover:translate-x-1 transition-transform" />
             </Link>
 
             <a
-              href="#simulasi"
+              href="#cara-kerja"
               className="w-full sm:w-auto px-6 py-3 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 font-medium text-base transition-all text-center"
             >
-              Lihat Demo
+              Lihat Cara Kerja
             </a>
           </div>
 
@@ -120,7 +124,7 @@ export default function Hero() {
             className="fade-up mt-4 text-[15px] text-slate-500"
             style={{ animationDelay: "0.4s" }}
           >
-            Mulai <span className="text-slate-300 font-medium">Rp 20rb/bulan</span> •
+            Mulai <span className="text-slate-300 font-medium">{formatRupiah(PRO.priceAmount)}/bulan</span> •
             Tanpa perlu install aplikasi
           </p>
         </div>

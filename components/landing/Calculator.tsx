@@ -46,7 +46,7 @@ export default function Calculator() {
           </div>
 
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20 self-start sm:self-auto">
-            <Sparkles className="w-3.5 h-3.5" /> Direct Estimator
+            <Sparkles className="w-3.5 h-3.5" /> Estimasi
           </span>
         </div>
 
@@ -153,6 +153,9 @@ export default function Calculator() {
           </div>
         </div>
 
+        <p className="mt-5 text-[11px] text-slate-500 text-center">
+          *Perkiraan berdasarkan asumsi 30 menit administrasi per pesanan. Hasil setiap usaha bisa berbeda.
+        </p>
       </div>
     </section>
   );

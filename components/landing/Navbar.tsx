@@ -7,17 +7,20 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Zap,
   Calculator,
-  Smartphone,
   Sparkles,
   ChevronRight,
-  MessageSquare,
+  ListChecks,
+  HelpCircle,
+  LogIn,
 } from "lucide-react";
+import { waLink } from "@/config/site";
 
 const navLinks = [
-  { name: "Fitur Unggulan", href: "#fitur", icon: Zap },
-  { name: "Kalkulator Hemat", href: "#kalkulator", icon: Calculator },
-  { name: "Simulasi Ukuran", href: "#simulasi", icon: Smartphone },
-  { name: "Harga Paket", href: "#harga", icon: Sparkles },
+  { name: "Fitur", href: "/#fitur", icon: Zap },
+  { name: "Cara Kerja", href: "/#cara-kerja", icon: ListChecks },
+  { name: "Kalkulator", href: "/#kalkulator", icon: Calculator },
+  { name: "Harga", href: "/#harga", icon: Sparkles },
+  { name: "FAQ", href: "/#faq", icon: HelpCircle },
 ];
 
 export default function Navbar() {
@@ -70,7 +73,7 @@ export default function Navbar() {
               benangku<span className="text-blue-400">.id</span>
             </span>
             <span className="text-[10px] text-slate-400 font-medium -mt-1 tracking-wider uppercase">
-              Mitra Penjahit UMKM
+              Untuk Penjahit & Konveksi
             </span>
           </div>
         </Link>
@@ -89,21 +92,27 @@ export default function Navbar() {
         </nav>
 
         {/* RIGHT ACTION BUTTON (DESKTOP) */}
-        <div className="hidden md:flex items-center gap-3">
+        <div className="hidden md:flex items-center gap-2">
           <Link
-            href="https://wa.me/6281234567890?text=Halo%20Admin%20Benangku.id,%20saya%20mau%20coba%20demo"
-            target="_blank"
-            className="relative group overflow-hidden px-5 py-2.5 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs font-semibold shadow-lg shadow-blue-600/25 hover:shadow-blue-600/40 hover:scale-105 active:scale-95 transition-all duration-300 flex items-center gap-2"
+            href="/login"
+            className="px-4 py-2 text-xs font-medium text-slate-300 hover:text-white transition-colors"
           >
-            <MessageSquare className="w-3.5 h-3.5" />
-            <span>Coba Gratis Sekarang</span>
+            Masuk
+          </Link>
+          <Link
+            href="/login"
+            className="px-5 py-2.5 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs font-semibold shadow-lg shadow-blue-600/25 hover:shadow-blue-600/40 hover:scale-105 active:scale-95 transition-all duration-300 flex items-center gap-2"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Coba Gratis</span>
           </Link>
         </div>
 
         {/* ANIMATED HAMBURGER BUTTON (MOBILE) */}
         <button
           onClick={() => setIsOpen(!isOpen)}
-          aria-label="Toggle Navigation Menu"
+          aria-label="Buka menu navigasi"
+          aria-expanded={isOpen}
           className="md:hidden relative w-10 h-10 rounded-full bg-slate-800/80 border border-slate-700 flex flex-col items-center justify-center gap-1.5 focus:outline-none"
         >
           <motion.span
@@ -188,17 +197,27 @@ export default function Navbar() {
               </div>
 
               {/* DRAWER FOOTER CTA */}
-              <div className="pt-6 border-t border-slate-800">
+              <div className="pt-6 border-t border-slate-800 space-y-3">
                 <Link
-                  href="https://wa.me/6281234567890?text=Halo%20Admin%20Benangku.id,%20saya%20mau%20coba%20demo"
-                  target="_blank"
+                  href="/login"
                   onClick={() => setIsOpen(false)}
-                  className="w-full py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold text-xs flex items-center justify-center gap-2 shadow-lg shadow-blue-600/30 active:scale-95 transition-all"
+                  className="w-full py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold text-sm flex items-center justify-center gap-2 shadow-lg shadow-blue-600/30 active:scale-95 transition-all"
                 >
-                  <MessageSquare className="w-4 h-4" />
-                  <span>Coba Gratis via WhatsApp</span>
+                  <LogIn className="w-4 h-4" />
+                  <span>Coba Gratis 14 Hari</span>
                 </Link>
-                <p className="text-center text-[11px] text-slate-500 mt-3">
+                {waLink("Halo benangku.id, saya mau tanya sebelum mendaftar.") && (
+                  <a
+                    href={waLink("Halo benangku.id, saya mau tanya sebelum mendaftar.")!}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => setIsOpen(false)}
+                    className="block text-center text-xs text-emerald-400 hover:underline"
+                  >
+                    Tanya dulu via WhatsApp
+                  </a>
+                )}
+                <p className="text-center text-[11px] text-slate-500">
                   Tanpa kartu kredit • Siap pakai dalam 1 menit
                 </p>
               </div>
