@@ -1,36 +1,64 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# benangku.id
 
-## Getting Started
+Aplikasi catatan order untuk penjahit & konveksi: ukuran pelanggan, antrean, DP & pelunasan.
+Next.js 16 · Supabase · Pixpayz (QRIS) · Telegram bot admin.
 
-First, run the development server:
+## Mulai
 
 ```bash
+npm install
+cp .env.example .env.local   # lalu isi semua nilainya
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Kontak & identitas
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Semua kontak ada di **`config/site.ts`**. Cukup atur di env:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Env | Isi |
+| --- | --- |
+| `NEXT_PUBLIC_WHATSAPP_NUMBER` | nomor CS, format `62…` (kosong = tombol WhatsApp disembunyikan) |
+| `NEXT_PUBLIC_APP_URL` | `https://benangku.id` |
 
-## Learn More
+Email support: `support@benangku.id`.
 
-To learn more about Next.js, take a look at the following resources:
+## Telegram bot admin
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. Buat bot di @BotFather → isi `TELEGRAM_BOT_TOKEN`.
+2. Isi `TELEGRAM_WEBHOOK_SECRET` (acak, huruf/angka/`_`/`-`) dan `TELEGRAM_ADMIN_IDS` (user ID Telegram, pisah koma).
+3. Setelah deploy: `npm run telegram:setup` (mendaftarkan webhook + menu perintah).
+4. Kirim `/help` ke bot.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Perintah | Fungsi |
+| --- | --- |
+| `/stats` | ringkasan toko, Pro/Trial aktif, order hari ini, omzet 30 hari |
+| `/cari kata` | cari toko berdasarkan email / nama / WA |
+| `/perpanjang email 30` | tambah masa aktif Pro (hari) |
+| `/notif` `/promo` `/peringatan` | broadcast ke semua toko (`Judul \| Isi`) |
+| `/kirim email \| Judul \| Isi` | pesan ke satu toko |
+| `/list` `/hapus ID` | kelola notifikasi |
 
-## Deploy on Vercel
+Alert otomatis ke admin: toko baru, pembayaran masuk, serangan yang diblokir WAF, dan ringkasan harian.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Cron harian
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Mengirim pengingat in-app (Pro/Trial berakhir ≤ 3 hari, tanpa duplikat) dan ringkasan harian ke Telegram.
+
+```cron
+0 8 * * *  curl -fsS -H "Authorization: Bearer $CRON_SECRET" https://benangku.id/api/cron/daily
+```
+
+## Operasional
+
+- Health check untuk uptime monitor: `GET /api/health`
+- Webhook pembayaran: `POST /api/payment/webhook`
+- `proxy.ts` = WAF ringan + refresh sesi Supabase (menggantikan `midleware.ts`)
+
+## Checklist sebelum launching
+
+- [ ] Semua env di `.env.example` terisi di server produksi
+- [ ] Redirect URL Google OAuth + Supabase memakai domain produksi
+- [ ] Webhook Pixpayz menunjuk ke `/api/payment/webhook`
+- [ ] `npm run telegram:setup` sudah dijalankan
+- [ ] Cron harian terpasang
+- [ ] `npm run build` lolos tanpa error

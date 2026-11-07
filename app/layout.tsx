@@ -16,9 +16,10 @@ const geistMono = Geist_Mono({
 });
 
 const siteUrl = SITE.url;
+const ogImageUrl = `${siteUrl}/og-image.png`;
 
 export const viewport: Viewport = {
-  themeColor: "#0f172a", // Warna header browser mobile (Slate-900)
+  themeColor: "#0f172a", // Slate-900
   width: "device-width",
   initialScale: 1,
 };
@@ -60,12 +61,24 @@ export const metadata: Metadata = {
     siteName: "Benangku",
     locale: "id_ID",
     type: "website",
+    images: [
+      {
+        url: ogImageUrl,
+        secureUrl: ogImageUrl,
+        width: 1200,
+        height: 630,
+        type: "image/png",
+        alt: "Benangku - Platform Manajemen Usaha Penjahit & Rumahan",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Benangku - Aplikasi Manajemen Usaha Penjahit",
+    title: "Benangku - Aplikasi Catatan Order Penjahit & Konveksi",
     description:
       "Kelola antrean jahit & ukuran badan pelanggan dengan mudah. Kirim update status via WA otomatis.",
+    creator: "@benangku",
+    images: [ogImageUrl],
   },
   robots: {
     index: true,
@@ -83,6 +96,7 @@ export const metadata: Metadata = {
       { url: "/favicon.ico" },
       { url: "/logo.svg", type: "image/svg+xml" },
     ],
+    apple: "/apple-touch-icon.png",
   },
 };
 
