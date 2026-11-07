@@ -1,5 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin';
+import { after } from 'next/server';
 import { getPlan } from '@/config/pricing';
+import { sendPaymentAlert } from '@/lib/telegram/alerts';
 
 const BASE_URL = 'https://pixpayz.com';
 
@@ -20,7 +22,7 @@ export async function activateSubscription(invoiceId: string) {
     .update({ status: 'paid', updated_at: new Date().toISOString() })
     .eq('invoice_id', invoiceId)
     .neq('status', 'paid')
-    .select('shop_id, plan')
+    .select('shop_id, plan, amount')
     .maybeSingle();
 
   if (!sub) return; // sudah diproses atau tidak ada
@@ -29,7 +31,7 @@ export async function activateSubscription(invoiceId: string) {
   if (!plan) return;
 
   const { data: shop } = await admin
-    .from('shops').select('pro_valid_until').eq('id', sub.shop_id).single();
+    .from('shops').select('pro_valid_until, shop_name, email').eq('id', sub.shop_id).single();
 
   // Perpanjang dari sisa masa aktif jika masih berlaku
   const start = shop?.pro_valid_until && new Date(shop.pro_valid_until) > new Date()
@@ -40,4 +42,18 @@ export async function activateSubscription(invoiceId: string) {
     subscription_status: 'active',
     pro_valid_until: start.toISOString(),
   }).eq('id', sub.shop_id);
+
+  // Beri tahu admin untuk pembayaran sungguhan (bukan trial gratis)
+  if ((sub.amount ?? 0) > 0) {
+    after(() =>
+      sendPaymentAlert({
+        shopName: shop?.shop_name || '(tanpa nama)',
+        ownerEmail: shop?.email || '-',
+        plan: plan.name,
+        amount: sub.amount,
+        invoiceId,
+        validUntil: start.toISOString(),
+      })
+    );
+  }
 }

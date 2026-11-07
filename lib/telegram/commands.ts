@@ -2,7 +2,8 @@ import 'server-only';
 import { z } from 'zod';
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { NotificationType } from '@/types/database';
-import { escapeHtml } from './api';
+import { escapeHtml, formatWib } from './api';
+import { formatStats } from './stats';
 
 const TYPE_BY_COMMAND: Record<string, NotificationType> = {
   notif: 'info',
@@ -20,15 +21,20 @@ const contentSchema = z.object({
 
 export const HELP_TEXT = `<b>🧵 Admin Bot benangku.id</b>
 
-<b>Kirim ke SEMUA toko</b>
-<code>/notif Judul | Isi pesan</code>  (info)
+<b>📢 Kirim ke SEMUA toko</b>
+<code>/notif Judul | Isi pesan</code>
 <code>/promo Judul | Isi pesan</code>
 <code>/peringatan Judul | Isi pesan</code>
 
-<b>Kirim ke SATU toko</b>
+<b>👤 Kirim ke SATU toko</b>
 <code>/kirim email@toko.com | Judul | Isi pesan</code>
 
-<b>Kelola</b>
+<b>🔎 Data & statistik</b>
+<code>/stats</code> – ringkasan pengguna & omzet
+<code>/cari kata</code> – cari toko (email/nama/WA)
+<code>/perpanjang email@toko.com 30</code> – tambah masa aktif Pro (hari)
+
+<b>🗂️ Kelola notifikasi</b>
 <code>/list</code> – 10 notifikasi terakhir
 <code>/hapus 12</code> – hapus notifikasi id 12
 <code>/help</code> – bantuan ini`;
@@ -47,6 +53,12 @@ export async function handleCommand(command: string, args: string, ctx: Ctx): Pr
       return broadcast(TYPE_BY_COMMAND[command], args, ctx);
     case 'kirim':
       return sendToShop(args, ctx);
+    case 'stats':
+      return formatStats();
+    case 'cari':
+      return searchShops(args);
+    case 'perpanjang':
+      return extendPro(args, ctx);
     case 'list':
       return listNotifications();
     case 'hapus':
@@ -138,4 +150,82 @@ async function deleteNotification(args: string): Promise<string> {
   if (error) return `❌ ${escapeHtml(error.message)}`;
   if (!data?.length) return `❌ Notifikasi #${id} tidak ditemukan.`;
   return `🗑️ Notifikasi <b>#${id}</b> dihapus.`;
+}
+
+
+// ── Data & statistik ────────────────────────────────────────────────────
+
+const STATUS_LABEL: Record<string, string> = {
+  active: '💎 Pro', paid: '💎 Pro', success: '💎 Pro',
+  trialing: '🆓 Trial', trial: '🆓 Trial',
+  expired: '⏳ Kedaluwarsa', pending: '⏳ Menunggu',
+};
+
+async function searchShops(args: string): Promise<string> {
+  const term = args.trim();
+  if (term.length < 3) return '❌ Format: <code>/cari kata</code> (minimal 3 karakter)';
+
+  const like = `%${term.replace(/[\\%_,()"]/g, ' ').trim()}%`;
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from('shops')
+    .select('shop_name, owner_name, email, whatsapp_number, subscription_status, trial_ends_at, pro_valid_until, created_at')
+    .or(['email', 'shop_name', 'owner_name', 'whatsapp_number'].map((c) => `${c}.ilike."${like}"`).join(','))
+    .order('created_at', { ascending: false })
+    .limit(5);
+
+  if (error) return `❌ ${escapeHtml(error.message)}`;
+  if (!data?.length) return `Tidak ada toko yang cocok dengan <code>${escapeHtml(term)}</code>.`;
+
+  const blocks = data.map((s) => {
+    const label = STATUS_LABEL[(s.subscription_status ?? '').toLowerCase()] ?? escapeHtml(s.subscription_status ?? '-');
+    const until = s.pro_valid_until ?? s.trial_ends_at;
+    return [
+      `<b>${escapeHtml(s.shop_name || '(belum isi nama toko)')}</b> — ${escapeHtml(s.owner_name)}`,
+      `✉️ <code>${escapeHtml(s.email)}</code>`,
+      `📱 ${escapeHtml(s.whatsapp_number || '-')}`,
+      `${label}${until ? ` · sampai ${escapeHtml(formatWib(until))}` : ''}`,
+    ].join('\n');
+  });
+  return `<b>Hasil pencarian (${data.length})</b>\n\n${blocks.join('\n\n')}`;
+}
+
+async function extendPro(args: string, ctx: Ctx): Promise<string> {
+  const usage = 'Format: <code>/perpanjang email@toko.com 30</code>';
+  const parts = args.trim().split(/\s+/);
+  const email = (parts[0] ?? '').toLowerCase();
+  const days = Number(parts[1]);
+
+  if (!z.string().email().safeParse(email).success) return `❌ Email tidak valid.\n\n${usage}`;
+  if (!Number.isInteger(days) || days < 1 || days > 366) return `❌ Jumlah hari harus 1–366.\n\n${usage}`;
+
+  const admin = createAdminClient();
+  const pattern = email.replace(/[\\%_]/g, (c) => `\\${c}`);
+  const { data: shop } = await admin
+    .from('shops')
+    .select('id, shop_name, pro_valid_until')
+    .ilike('email', pattern)
+    .maybeSingle();
+  if (!shop) return `❌ Toko dengan email <code>${escapeHtml(email)}</code> tidak ditemukan.`;
+
+  // Perpanjang dari sisa masa aktif bila masih berlaku
+  const base = shop.pro_valid_until && new Date(shop.pro_valid_until) > new Date()
+    ? new Date(shop.pro_valid_until) : new Date();
+  base.setDate(base.getDate() + days);
+
+  const { error } = await admin
+    .from('shops')
+    .update({ subscription_status: 'active', pro_valid_until: base.toISOString() })
+    .eq('id', shop.id);
+  if (error) return `❌ Gagal memperpanjang: ${escapeHtml(error.message)}`;
+
+  await admin.from('notifications').insert({
+    shop_id: shop.id,
+    type: 'info',
+    title: 'Masa aktif Pro diperpanjang',
+    body: `Paket Pro kamu diperpanjang ${days} hari. Aktif sampai ${formatWib(base)}. Terima kasih sudah memakai benangku.id!`,
+    created_by: String(ctx.adminId),
+  });
+
+  return `✅ <b>${escapeHtml(shop.shop_name || email)}</b> diperpanjang <b>${days} hari</b>.\nAktif sampai: ${escapeHtml(formatWib(base))}`;
 }

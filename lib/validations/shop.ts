@@ -11,3 +11,13 @@ export const onboardingSchema = z.object({
 });
 
 export type OnboardingInput = z.infer<typeof onboardingSchema>;
+
+export const profileSchema = onboardingSchema.extend({
+  owner_name: z
+    .string()
+    .trim()
+    .min(2, 'Nama pemilik minimal 2 karakter')
+    .max(100, 'Nama pemilik maksimal 100 karakter'),
+});
+
+export type ProfileInput = z.infer<typeof profileSchema>;
