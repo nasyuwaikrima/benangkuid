@@ -6,7 +6,7 @@ import Link from 'next/link';
 import SiteFooter from '@/components/SiteFooter';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 
-export const dynamic = 'force-dynamic';
+//export const dynamic = 'force-dynamic';
 
 function AuthErrorAlert({ onError }: { onError: (msg: string) => void }) {
   const params = useSearchParams();
